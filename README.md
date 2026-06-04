@@ -89,12 +89,14 @@ On répond aux trois indices l'un après l'autre, puis tout est validé d'un cou
 question compte juste si les **trois** parties sont correctes. Un **contrôle de volume**
 (curseur + coupure) est intégré au lecteur et mémorisé.
 
-> La base contient **57 thèmes réels vérifiés** couvrant les 6 consoles et les
-> **9 générations** (Game Boy → Nintendo Switch), **remakes inclus** (Rouge Feu/Vert
+> La base contient **100 thèmes réels vérifiés** (oEmbed) couvrant les 6 consoles, les
+> **9 générations** (Game Boy → Nintendo Switch) et les **remakes** (Rouge Feu/Vert
 > Feuille, HeartGold/SoulSilver, Rubis Oméga/Saphir Alpha, Diamant Étincelant/Perle
-> Scintillante, Let's Go) et la **9G** (Écarlate/Violet). Les identifiants de vidéos vivent
-> dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont faciles à mettre à
-> jour si une vidéo est un jour supprimée.
+> Scintillante, Let's Go) + la **9G** (Écarlate/Violet). Combats, villes et lieux y sont
+> distingués (catégories) : Kanto (Gen 1) et Johto (Gen 2) ont ≥4 thèmes par catégorie,
+> les autres régions tendent vers ça. Les identifiants de vidéos vivent dans le tableau
+> `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont faciles à mettre à jour si une vidéo
+> est un jour supprimée.
 
 ## 🏆 Records persistants
 
