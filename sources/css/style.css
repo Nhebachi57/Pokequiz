@@ -46,6 +46,7 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 /* hub menu grid */
 #screen-menu{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem}
 .giratina-wrap{position:relative;z-index:2;width:240px;height:240px;margin-bottom:.5rem;filter:drop-shadow(0 0 30px rgba(90,63,160,.5)) drop-shadow(0 0 60px rgba(42,168,196,.2))}
+.giratina-sprite{width:100%;height:100%;object-fit:contain;image-rendering:auto}
 .menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;width:100%;max-width:560px;position:relative;z-index:2}
 .menu-btn{position:relative;display:block;background:transparent;border:1px solid var(--gira-purple);border-radius:4px;padding:1.2rem 1rem;cursor:pointer;overflow:hidden;transition:all .3s;text-align:center;color:inherit}
 .menu-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--gira-purple),var(--gira-teal));opacity:0;transition:opacity .3s}

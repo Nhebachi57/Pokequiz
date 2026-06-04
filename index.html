@@ -53,6 +53,7 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 /* hub menu grid */
 #screen-menu{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem}
 .giratina-wrap{position:relative;z-index:2;width:240px;height:240px;margin-bottom:.5rem;filter:drop-shadow(0 0 30px rgba(90,63,160,.5)) drop-shadow(0 0 60px rgba(42,168,196,.2))}
+.giratina-sprite{width:100%;height:100%;object-fit:contain;image-rendering:auto}
 .menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;width:100%;max-width:560px;position:relative;z-index:2}
 .menu-btn{position:relative;display:block;background:transparent;border:1px solid var(--gira-purple);border-radius:4px;padding:1.2rem 1rem;cursor:pointer;overflow:hidden;transition:all .3s;text-align:center;color:inherit}
 .menu-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--gira-purple),var(--gira-teal));opacity:0;transition:opacity .3s}
@@ -188,7 +189,8 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 <div id="screen-menu" class="screen active">
   <div class="menu-halo"></div>
   <div class="giratina-wrap float">
-    <svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">
+    <img class="giratina-sprite" alt="Giratina (Forme Originelle)" src="https://play.pokemonshowdown.com/sprites/ani/giratina-origin.gif" data-home="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/10007.png" data-art="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10007.png" data-step="0" onerror="var s=this.dataset.step;if(s==='0'){this.dataset.step='1';this.src=this.dataset.home;}else if(s==='1'){this.dataset.step='2';this.src=this.dataset.art;}else{this.style.display='none';var sv=document.getElementById('giratina-svg');if(sv)sv.style.display='block';}">
+    <svg id="giratina-svg" style="display:none" viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="gg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#5a3fa0" stop-opacity=".3"/><stop offset="100%" stop-color="#050508" stop-opacity="0"/></radialGradient>
         <radialGradient id="bg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2a2040"/><stop offset="100%" stop-color="#0a0814"/></radialGradient>
