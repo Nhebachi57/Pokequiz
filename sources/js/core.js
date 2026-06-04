@@ -261,6 +261,16 @@ const Quiz=(function(){
         '<div class="mode-cards" id="q-modes"></div>'+
         '<a class="res-btn secondary" href="index.html">&#8592; Menu principal</a>'+
       '</div></div>'+
+      // select (écran de réglages facultatif : G.selectHTML)
+      '<div id="q-select" class="screen"><div class="start-wrap">'+
+        '<p class="sec-title">Réglages de la partie</p>'+
+        '<h1 class="sec-head" id="q-select-title"></h1>'+
+        '<div id="q-select-body" style="width:100%;max-width:700px"></div>'+
+        '<div class="res-btns" style="margin-top:1.6rem">'+
+          '<button class="res-btn primary" id="q-select-go">Commencer</button>'+
+          '<button class="res-btn secondary" id="q-select-back">&#8592; Modes</button>'+
+        '</div>'+
+      '</div></div>'+
       // game
       '<div id="q-game" class="screen"><div class="game-wrap">'+
         '<div class="game-header">'+
@@ -288,13 +298,25 @@ const Quiz=(function(){
     G.difficulties.forEach(d=>{
       const c=document.createElement("div");c.className="mode-card"+(d.cls?(" "+d.cls):"");c.dataset.mode=d.key;
       c.innerHTML='<span class="mi">'+d.icon+'</span><p class="mn">'+d.label+'</p><p class="md">'+d.desc+'</p><p class="mrec"></p>';
-      c.addEventListener("click",()=>{Audio8.click();start(d);});
+      c.addEventListener("click",()=>{Audio8.click();if(G.selectHTML)openSelect(d);else start(d);});
       modes.appendChild(c);
     });
     document.getElementById("q-quit").addEventListener("click",quit);
     document.getElementById("q-replay").addEventListener("click",()=>{Audio8.click();start(st.diff);});
-    document.getElementById("q-change").addEventListener("click",()=>{Audio8.click();Audio8.stopLoop();showS("q-start");});
+    document.getElementById("q-change").addEventListener("click",()=>{Audio8.click();leaveGame();showS("q-start");});
+    document.getElementById("q-select-back").addEventListener("click",()=>{Audio8.click();showS("q-start");});
+    document.getElementById("q-select-go").addEventListener("click",()=>{Audio8.click();if(G.applySelect&&!G.applySelect())return;start(pendingDiff);});
     refreshModeRecords();
+  }
+
+  /* écran de sélection facultatif (entre le choix du mode et la partie) */
+  let pendingDiff=null;
+  function openSelect(d){
+    pendingDiff=d;
+    const t=document.getElementById("q-select-title");if(t)t.textContent=G.selectTitle||G.title;
+    document.getElementById("q-select-body").innerHTML=G.selectHTML();
+    if(G.onSelectMounted)try{G.onSelectMounted();}catch(e){}
+    showS("q-select");
   }
 
   /* met à jour la ligne de record sous chaque carte de mode (rejoue les valeurs sauvegardées) */
@@ -318,12 +340,15 @@ const Quiz=(function(){
     render();
   }
 
+  /* arrête proprement tout ce qui tourne (minuteur, audio chiptune ET audio du jeu via G.onLeave) */
+  function leaveGame(){clearTimer();Audio8.stopLoop();st.paused=false;if(G.onLeave){try{G.onLeave();}catch(e){}}}
+
   function quit(){
     if(st.i>0){
       if(st.infinite||st.lives){ if(confirm("Terminer la partie et voir ton score ?")) return results(); return; }
       if(!confirm("Abandonner cette partie ? Tes progrès seront perdus."))return;
     }
-    Audio8.stopLoop();showS("q-start");
+    leaveGame();showS("q-start");
   }
 
   function render(){
@@ -364,8 +389,18 @@ const Quiz=(function(){
     document.getElementById("q-next").addEventListener("click",next);
     if(G.hints&&q.hint){document.getElementById("q-hint").addEventListener("click",useHint);}
     const pbn=document.getElementById("q-pause");if(pbn)pbn.addEventListener("click",togglePause);
-    if(q.onMounted)q.onMounted(q,{resolve:resolveCustom});
+    if(q.onMounted)q.onMounted(q,{resolve:resolveCustom,skip:skipQ});
     if(st.timer)startTimer();
+  }
+
+  /* PASSER — abandonne le morceau courant (sans point ni faute) et enchaîne sur un nouveau.
+     Le jeu peut, via G.onSkip(st), réinitialiser son groupe de questions (ex. Studio Sonore : st._mq). */
+  function skipQ(){
+    if(st.answered)return;clearTimer();
+    if(G.onSkip){try{G.onSkip(st);}catch(e){}}
+    st.i++;
+    if(!st.infinite&&st.i>=st.total)return results();
+    render();
   }
 
   /* résolution d'une question « personnalisée » (UI maison, ex. Studio Sonore en 3 parties).
@@ -487,7 +522,7 @@ const Quiz=(function(){
   }
 
   function results(){
-    clearTimer();Audio8.stopLoop();
+    leaveGame();
     const denom=Math.max(1,(st.score+st.wrong));
     const pct=Math.round(st.score/denom*100);
     document.getElementById("q-pct").textContent=pct+"%";
