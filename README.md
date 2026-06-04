@@ -89,9 +89,12 @@ On répond aux trois indices l'un après l'autre, puis tout est validé d'un cou
 question compte juste si les **trois** parties sont correctes. Un **contrôle de volume**
 (curseur + coupure) est intégré au lecteur et mémorisé.
 
-> La base contient **42 thèmes réels vérifiés** couvrant les 6 consoles. Les identifiants
-> de vidéos vivent dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont
-> faciles à mettre à jour si une vidéo est un jour supprimée.
+> La base contient **57 thèmes réels vérifiés** couvrant les 6 consoles et les
+> **9 générations** (Game Boy → Nintendo Switch), **remakes inclus** (Rouge Feu/Vert
+> Feuille, HeartGold/SoulSilver, Rubis Oméga/Saphir Alpha, Diamant Étincelant/Perle
+> Scintillante, Let's Go) et la **9G** (Écarlate/Violet). Les identifiants de vidéos vivent
+> dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont faciles à mettre à
+> jour si une vidéo est un jour supprimée.
 
 ## 🏆 Records persistants
 

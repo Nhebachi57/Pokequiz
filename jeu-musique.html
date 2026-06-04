@@ -861,7 +861,28 @@ const OST=[
   {name:"Combat — Maître Tarak",     console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Stade de Galar",                yt:"dhCjo55vHUw"},
   {name:"Combat — Champion d'Arène", console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Arène de Galar",                yt:"quYjN57Tycg"},
   {name:"Combat — Dresseur",         console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Combat de Dresseur (Galar)",    yt:"o0LZKtKV3lI"},
-  {name:"Combat — Pokémon sauvage",  console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Combat sauvage (Galar)",        yt:"Q9qzH58HtHM"}
+  {name:"Combat — Pokémon sauvage",  console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Combat sauvage (Galar)",        yt:"Q9qzH58HtHM"},
+  /* Gen 9 — Nintendo Switch — Paldea */
+  {name:"Zéro Abyssal",              console:"Nintendo Switch",  game:"Pokémon Écarlate · Violet",         region:"Paldea", zone:"Zéro Abyssal",                  yt:"pgXEubKjxks"},
+  {name:"Combat — Championne Menthe",console:"Nintendo Switch",  game:"Pokémon Écarlate · Violet",         region:"Paldea", zone:"Ligue Pokémon de Paldea",       yt:"Vjwn6W5uDqc"},
+  {name:"Combat — Team Star",        console:"Nintendo Switch",  game:"Pokémon Écarlate · Violet",         region:"Paldea", zone:"Repaire de la Team Star",       yt:"uRbDCEJ23WI"},
+  {name:"Combat — Dresseur",         console:"Nintendo Switch",  game:"Pokémon Écarlate · Violet",         region:"Paldea", zone:"Combat de Dresseur (Paldea)",   yt:"QznsezP3rYg"},
+  {name:"Combat — Terapagos",        console:"Nintendo Switch",  game:"Pokémon Écarlate · Violet",         region:"Paldea", zone:"Cœur du Zéro Abyssal",          yt:"zGYHfRFvuPk"},
+  /* Remake — Game Boy Advance — Kanto */
+  {name:"Îles Sept",                 console:"Game Boy Advance", game:"Pokémon Rouge Feu · Vert Feuille",  region:"Kanto",  zone:"Îles Sept",                     yt:"e-9jj__JhdE"},
+  {name:"Combat — Dresseur (RFVF)",  console:"Game Boy Advance", game:"Pokémon Rouge Feu · Vert Feuille",  region:"Kanto",  zone:"Combat de Dresseur (RFVF)",     yt:"dmCHj2PDctU"},
+  /* Remake — Nintendo DS — Johto */
+  {name:"Combat — Dresseur (Johto)", console:"Nintendo DS",      game:"Pokémon Or HeartGold · Argent SoulSilver", region:"Johto", zone:"Combat de Dresseur (HGSS)", yt:"DyKfMtnITfc"},
+  {name:"Combat — Champion d'Arène (HGSS)", console:"Nintendo DS", game:"Pokémon Or HeartGold · Argent SoulSilver", region:"Johto", zone:"Arène (HGSS)",         yt:"ufYIjzq_QwA"},
+  /* Remake — Nintendo 3DS — Hoenn */
+  {name:"Combat — Dresseur (ORAS)",  console:"Nintendo 3DS",     game:"Pokémon Rubis Oméga · Saphir Alpha", region:"Hoenn", zone:"Combat de Dresseur (ORAS)",     yt:"in3zXwiDlkE"},
+  {name:"Combat — Champion d'Arène (ORAS)", console:"Nintendo 3DS", game:"Pokémon Rubis Oméga · Saphir Alpha", region:"Hoenn", zone:"Arène de Hoenn (ORAS)",     yt:"91tODLXipK4"},
+  /* Remake — Nintendo Switch — Sinnoh */
+  {name:"Combat — Dresseur (DEPS)",  console:"Nintendo Switch",  game:"Pokémon Diamant Étincelant · Perle Scintillante", region:"Sinnoh", zone:"Combat de Dresseur (DEPS)", yt:"PGLAJ1jqF68"},
+  {name:"Combat — Champion d'Arène (DEPS)", console:"Nintendo Switch", game:"Pokémon Diamant Étincelant · Perle Scintillante", region:"Sinnoh", zone:"Arène (DEPS)",   yt:"2TTPSi3aV5M"},
+  /* Remake — Nintendo Switch — Kanto */
+  {name:"Combat — Dresseur (Let's Go)", console:"Nintendo Switch", game:"Pokémon Let's Go Pikachu · Évoli", region:"Kanto", zone:"Combat de Dresseur (Let's Go)", yt:"layLmJ5gB3o"},
+  {name:"Combat — Arène / Conseil 4 (Let's Go)", console:"Nintendo Switch", game:"Pokémon Let's Go Pikachu · Évoli", region:"Kanto", zone:"Arène (Let's Go)",      yt:"BONM9_MS11I"}
 ];
 
 const OST_CONSOLES=[...new Set(OST.map(t=>t.console))];
@@ -917,19 +938,19 @@ function stepLabel(steps,key,name){const n=steps.length,k=steps.indexOf(key)+1;r
 /* ---- les questions (1 morceau, 2 ou 3 écrans) ---- */
 function qConsole(t,steps){
   return {badge:soundBadge(),tlabel:stepLabel(steps,"console","La console"),
-    text:"Écoute ce thème (titre masqué). Sur quelle <b>console</b> est-il apparu pour la première fois&#8201;?",
+    text:"Écoute ce thème (titre masqué). De quelle <b>console</b> provient cet extrait&#8201;?",
     media:mediaHTML(t,steps,"console"),onMounted:function(q){wirePlayer(t);},
     answers:consoleOptions(t),correct:t.console,
-    fbc:"Oui&#8201;! Ce thème est apparu pour la première fois sur "+t.console+".",
-    fbw:"Non — première apparition sur "+t.console+"."};
+    fbc:"Oui&#8201;! Cet extrait provient de la "+t.console+".",
+    fbw:"Non — cet extrait provient de la "+t.console+"."};
 }
 function qGame(t,steps){
   return {badge:soundBadge(),tlabel:stepLabel(steps,"game","Le jeu"),
-    text:"Bien&#8201;! Sur "+escapeHtml(t.console)+", dans quel <b>jeu</b> est-il apparu en premier&#8201;?",
+    text:"Bien&#8201;! Sur "+escapeHtml(t.console)+", de quel <b>jeu</b> provient cet extrait&#8201;?",
     media:mediaHTML(t,steps,"game"),onMounted:function(q){wirePlayer(t);},
     answers:gameOptions(t),correct:t.game,
-    fbc:"Exact&#8201;! Première apparition dans « "+t.game+" ».",
-    fbw:"Non — première apparition dans « "+t.game+" »."};
+    fbc:"Exact&#8201;! Cet extrait provient de « "+t.game+" ».",
+    fbw:"Non — cet extrait provient de « "+t.game+" »."};
 }
 function qZone(t,steps){
   return {badge:soundBadge(),tlabel:stepLabel(steps,"zone","La zone"),
