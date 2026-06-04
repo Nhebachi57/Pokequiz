@@ -191,7 +191,28 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .funnel .fstep.done{color:var(--gira-teal-bright);border-color:var(--gira-teal)}
 .funnel .farrow{color:var(--text-muted);font-size:.6rem}
 
-@media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}}
+/* contrôle de volume (Studio Sonore) */
+.vol-row{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.7rem}
+.vol-btn{background:var(--shadow-mid);border:1px solid var(--gira-purple);color:var(--gira-gold);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;transition:all .2s;flex:none}
+.vol-btn:hover{border-color:var(--gira-gold);box-shadow:0 0 12px rgba(200,168,75,.25)}
+.vol-slider{-webkit-appearance:none;appearance:none;width:150px;max-width:45vw;height:4px;border-radius:3px;background:var(--shadow-light);outline:none;cursor:pointer}
+.vol-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--gira-gold);cursor:pointer;box-shadow:0 0 6px rgba(200,168,75,.5)}
+.vol-slider::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--gira-gold);cursor:pointer}
+.vol-val{font-family:'Cinzel Decorative',serif;font-size:.6rem;color:var(--text-secondary);min-width:2.2em;text-align:left}
+
+/* question en 3 parties : Console -> Jeu -> Zone (affichage en 3 temps) */
+.trio{display:flex;flex-direction:column;gap:1rem;margin-top:1.4rem}
+.trio-step{transition:opacity .3s}
+.trio-step.locked{opacity:.32;filter:grayscale(.4)}
+.trio-step.locked .trio-opts{pointer-events:none}
+.trio-label{font-family:'Cinzel Decorative',serif;font-size:.62rem;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.trio-step.on .trio-label{color:var(--gira-gold)}
+.trio-step.solved .trio-label{color:var(--gira-teal-bright)}
+.trio-opts{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.trio-opts .answer-btn{padding:.7rem .8rem;font-size:.92rem}
+.answer-btn.chosen{border-color:var(--gira-gold);background:rgba(200,168,75,.12);box-shadow:0 0 14px rgba(200,168,75,.18)}
+
+@media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}.trio-opts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -549,8 +570,27 @@ const Quiz=(function(){
     document.querySelectorAll("#q-answers .answer-btn").forEach(b=>b.addEventListener("click",()=>choose(b)));
     document.getElementById("q-next").addEventListener("click",next);
     if(G.hints&&q.hint){document.getElementById("q-hint").addEventListener("click",useHint);}
-    if(q.onMounted)q.onMounted(q);
+    if(q.onMounted)q.onMounted(q,{resolve:resolveCustom});
     if(st.timer)startTimer();
+  }
+
+  /* résolution d'une question « personnalisée » (UI maison, ex. Studio Sonore en 3 parties).
+     ok=booléen ; fbHTML=contenu d'explication facultatif. Mutualise le scoring du moteur. */
+  function resolveCustom(ok,fbHTML){
+    if(st.answered)return;st.answered=true;clearTimer();
+    const fb=document.getElementById("q-feedback");
+    if(ok){
+      st.score++;st.streak++;st.best=Math.max(st.best,st.streak);
+      fb.className="feedback correct";
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+'</span>';
+      Audio8.jingleGood();
+    }else{
+      st.streak=0;st.wrong++;if(st.maxLives)st.lives--;
+      fb.className="feedback wrong";
+      fb.innerHTML='<span class="fl">&#10022; Pas tout à fait</span><span class="ft">'+(fbHTML||st.current.fbw||"")+'</span>';
+      Audio8.jingleBad();
+    }
+    finishTurn();
   }
 
   function startTimer(){
@@ -676,10 +716,10 @@ function typeBadge(label){return '<div class="q-badge" style="background:rgba(20
 <script>
 /* ============================================================
    STUDIO SONORE — Quiz « vraie musique » (YouTube)
-   On écoute un vrai thème (titre masqué) et on remonte la piste en
-   entonnoir : 1) la CONSOLE de première apparition → 2) le JEU → 3) la ZONE.
-   L'audio est joué par le lecteur YouTube officiel intégré : rien n'est
-   hébergé ici, on ne fait que référencer les vidéos.
+   Une seule question par morceau, jouée EN 3 TEMPS sur le même thème :
+   1) Console de première apparition  2) Jeu  3) Zone / lieu.
+   L'audio est joué par le lecteur YouTube officiel intégré (titre masqué) :
+   rien n'est hébergé ici, on ne fait que référencer les vidéos.
    ============================================================ */
 
 /* ---- équaliseur décoratif ---- */
@@ -688,8 +728,13 @@ function eqBarsHTML(){let b="";for(let i=0;i<16;i++)b+='<span class="bar"></span
 function idleEq(){clearInterval(eqTimer);const bars=document.querySelectorAll(".equalizer .bar");if(!bars.length)return;eqTimer=setInterval(()=>{bars.forEach(b=>b.style.height=(8+Math.random()*8)+"px");},400);}
 function pulseEq(ms){clearInterval(eqTimer);const bars=document.querySelectorAll(".equalizer .bar");if(!bars.length)return;let beat=0;eqTimer=setInterval(()=>{bars.forEach((b,i)=>{b.style.height=(12+Math.abs(Math.sin((beat+i)*.6))*46+Math.random()*8)+"px";});beat++;},90);if(ms)setTimeout(idleEq,ms);}
 
+/* ---- volume (persistant) ---- */
+function getVol(){const v=parseInt(localStorage.getItem("pokequiz_ytvol"),10);return isNaN(v)?70:Math.max(0,Math.min(100,v));}
+function setVol(v){v=Math.max(0,Math.min(100,v|0));localStorage.setItem("pokequiz_ytvol",v);if(ytPlayer&&ytPlayer.setVolume){try{ytPlayer.setVolume(v);if(ytPlayer.isMuted&&ytPlayer.isMuted()&&v>0)ytPlayer.unMute();if(v===0&&ytPlayer.mute)ytPlayer.mute();}catch(e){}}return v;}
+function volIcon(v){return v===0?"&#128263;":(v<50?"&#128264;":"&#128266;");}
+
 /* ---- lecteur YouTube masqué (titre caché → on devine à l'oreille) ---- */
-let YT_READY=false, ytPlayer=null, ytPending=null, ytCurId=null, ytStopT=null;
+let YT_READY=false, ytPlayer=null, ytPending=null, ytCurId=null, ytStopT=null, curTrack=null;
 (function mountYT(){
   if(!document.getElementById("yt-stage")){
     const st=document.createElement("div");st.id="yt-stage";st.innerHTML='<div id="yt-host"></div>';
@@ -703,130 +748,188 @@ let YT_READY=false, ytPlayer=null, ytPending=null, ytCurId=null, ytStopT=null;
 window.onYouTubeIframeAPIReady=function(){
   ytPlayer=new YT.Player("yt-host",{height:"200",width:"200",
     playerVars:{playsinline:1,controls:0,disablekb:1,modestbranding:1,rel:0,fs:0,iv_load_policy:3},
-    events:{onReady:function(){YT_READY=true;if(ytPending){const p=ytPending;ytPending=null;ytLoad(p.id,p.start);}},onError:ytError}});
+    events:{onReady:function(){YT_READY=true;try{ytPlayer.setVolume(getVol());}catch(e){}if(ytPending){const p=ytPending;ytPending=null;ytLoad(p.id,p.start);}},onError:ytError}});
 };
 function ytLoad(id,start){
   if(!YT_READY||!ytPlayer||!ytPlayer.loadVideoById){ytPending={id:id,start:start};return;}
   ytCurId=id;
-  try{ytPlayer.loadVideoById({videoId:id,startSeconds:start||0});}catch(e){}
+  try{ytPlayer.loadVideoById({videoId:id,startSeconds:start||0});ytPlayer.setVolume(getVol());}catch(e){}
   if(ytStopT)clearTimeout(ytStopT);
-  ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},22000);
-  pulseEq(22000);
+  ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},25000);
+  pulseEq(25000);
 }
 function ytResume(t){
   if(!YT_READY||!ytPlayer){ytPending={id:t.yt,start:t.start};return;}
   if(t.yt===ytCurId){
-    try{ytPlayer.playVideo();}catch(e){}
+    try{ytPlayer.playVideo();ytPlayer.setVolume(getVol());}catch(e){}
     if(ytStopT)clearTimeout(ytStopT);
-    ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},22000);
-    pulseEq(22000);return;
+    ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},25000);
+    pulseEq(25000);return;
   }
   ytLoad(t.yt,t.start);
 }
 function ytReplay(){if(curTrack)ytLoad(curTrack.yt,curTrack.start);}
 function ytError(){const f=document.getElementById("yt-fallback");if(f)f.style.display="inline-block";}
+function ytSearchUrl(t){return "https://www.youtube.com/results?search_query="+encodeURIComponent("Pokémon "+t.name+" "+t.game);}
 
-/* ---- base de morceaux RÉELS : nom · console de 1re apparition · jeu · région · zone · vidéo YouTube ---- */
+/* ---- base de morceaux RÉELS (vérifiés) : nom · console de 1re apparition · jeu · région · zone · vidéo ---- */
 const OST=[
-  /* Génération 1 — Game Boy — Kanto */
-  {name:"Bourg Palette",            console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg Palette",              yt:"cOWRNLaCMJg", start:0},
-  {name:"Route 1",                  console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Route 1",                    yt:"u0G12EBW4KY", start:0},
-  {name:"Bourg de Lavanville",      console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg de Lavanville",        yt:"JNJJ-QkZ8cM", start:0},
-  {name:"Centre Pokémon",           console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Centre Pokémon",             yt:"MjZIjHu0OfY", start:0},
-  {name:"Combat — Pokémon sauvage", console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Combat — Pokémon sauvage",   yt:"NrS523dOHU4", start:0},
-  {name:"Combat — Champion d'Arène",console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Arène Pokémon",              yt:"RJKIrqO1Zas", start:0},
-  {name:"Combat final — Rival",     console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Plateau Indigo (Ligue)",     yt:"FngEa4LQd0M", start:0},
-  {name:"Repaire de la Team Rocket",console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Repaire de la Team Rocket",  yt:"5kiKM2f2j_o", start:0},
-  /* Génération 2 — Game Boy Color — Johto */
-  {name:"Bourg Geon",               console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Bourg Geon",                 yt:"D0j9AOEhzO8", start:0},
-  {name:"Doublonville",             console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Doublonville",               yt:"Qyv-ZtUR6P8", start:0},
-  {name:"Combat — Dresseur Red",    console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Mont Argenté",               yt:"Jxk9DqdYsJ4", start:0},
-  /* Génération 3 — Game Boy Advance — Hoenn */
-  {name:"Bourg en Vol",             console:"Game Boy Advance",  game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Bourg en Vol",               yt:"im6tbN9SZXs", start:0},
-  {name:"Route 110 — Piste Cyclable",console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Route 110 — Piste Cyclable", yt:"H4rHZs9QWGQ", start:0},
-  {name:"Combat — Groudon / Kyogre",console:"Game Boy Advance",  game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Grotte Origine",             yt:"r2BWx32tXXo", start:0},
-  /* Génération 4 — Nintendo DS — Sinnoh */
-  {name:"Combat — Maître Cynthia",  console:"Nintendo DS",       game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Ligue Pokémon de Sinnoh",    yt:"rXefFHRgyE0", start:0},
-  /* Génération 5 — Nintendo DS — Unys */
-  {name:"Combat — N",               console:"Nintendo DS",       game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Château de la Team Plasma",  yt:"O0ajBL15Knk", start:0},
-  /* Génération 6 — Nintendo 3DS — Kalos */
-  {name:"Illumis",                  console:"Nintendo 3DS",      game:"Pokémon X · Y",                     region:"Kalos",  zone:"Illumis",                    yt:"WlaBnwzp6dQ", start:0},
-  /* Génération 7 — Nintendo 3DS — Alola */
-  {name:"Combat — Conseil 4 d'Alola",console:"Nintendo 3DS",     game:"Pokémon Soleil · Lune",             region:"Alola",  zone:"Ligue Pokémon d'Alola",      yt:"Dv7AXRqjTuQ", start:0},
-  /* Génération 8 — Nintendo Switch — Galar */
-  {name:"Combat — Maître Tarak",    console:"Nintendo Switch",   game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Stade de Galar",             yt:"dhCjo55vHUw", start:0}
+  /* Gen 1 — Game Boy — Kanto */
+  {name:"Bourg Palette",             console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg Palette",                 yt:"cOWRNLaCMJg"},
+  {name:"Route 1",                   console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Route 1",                       yt:"u0G12EBW4KY"},
+  {name:"Bourg de Lavanville",       console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg de Lavanville",           yt:"JNJJ-QkZ8cM"},
+  {name:"Centre Pokémon",            console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Centre Pokémon",                yt:"MjZIjHu0OfY"},
+  {name:"Combat — Pokémon sauvage",  console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Combat sauvage (Kanto)",        yt:"NrS523dOHU4"},
+  {name:"Combat — Champion d'Arène", console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Arène de Kanto",                yt:"RJKIrqO1Zas"},
+  {name:"Combat final — Rival",      console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Plateau Indigo (Ligue)",        yt:"FngEa4LQd0M"},
+  {name:"Repaire de la Team Rocket", console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Repaire de la Team Rocket",     yt:"5kiKM2f2j_o"},
+  {name:"Écran-titre",               console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Écran-titre",                   yt:"NySjLlJYipE"},
+  {name:"Céladopole",                console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Céladopole",                    yt:"q64ZZSYkhTY"},
+  {name:"Mont Sélénite",             console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Mont Sélénite",                 yt:"3rj2Tsp_DVM"},
+  {name:"Surf",                      console:"Game Boy",         game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Surf (sur l'eau)",              yt:"I4p0Q-O6kzE"},
+  /* Gen 2 — Game Boy Color — Johto */
+  {name:"Bourg Geon",                console:"Game Boy Color",   game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Bourg Geon",                    yt:"D0j9AOEhzO8"},
+  {name:"Doublonville",              console:"Game Boy Color",   game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Doublonville",                  yt:"DlqTD429kEM"},
+  {name:"Combat — Dresseur Red",     console:"Game Boy Color",   game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Mont Argenté",                  yt:"Jxk9DqdYsJ4"},
+  {name:"Rosalia",                   console:"Game Boy Color",   game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Rosalia",                       yt:"964o082_RHA"},
+  /* Gen 3 — Game Boy Advance — Hoenn */
+  {name:"Bourg en Vol",              console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Bourg en Vol",                  yt:"im6tbN9SZXs"},
+  {name:"Route 110 — Piste Cyclable",console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Route 110 — Piste Cyclable",    yt:"H4rHZs9QWGQ"},
+  {name:"Combat — Groudon / Kyogre", console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Grotte Origine",                yt:"r2BWx32tXXo"},
+  {name:"Combat — Champion Pierre Rochard", console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn", zone:"Ligue Pokémon de Hoenn",  yt:"LaAGsbtETIg"},
+  {name:"Combat — Team Aqua / Magma",console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Repaire de la Team Aqua/Magma", yt:"jG1P3BLXH0E"},
+  /* Gen 4 — Nintendo DS — Sinnoh */
+  {name:"Combat — Maître Cynthia",   console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Ligue Pokémon de Sinnoh",       yt:"rXefFHRgyE0"},
+  {name:"Bonaugure",                 console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Bonaugure",                     yt:"npOxbkubyEA"},
+  {name:"Combat — Dialga / Palkia",  console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Colonne Lance",                 yt:"jKVrB60klMY"},
+  {name:"Combat — Dresseur",         console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Combat de Dresseur (Sinnoh)",   yt:"qtzPna9yFjg"},
+  {name:"Combat — Champion d'Arène", console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Arène de Sinnoh",               yt:"qiCpFkybzeI"},
+  {name:"Combat — Team Galaxie",     console:"Nintendo DS",      game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"QG de la Team Galaxie",         yt:"NqXq3_2SI1w"},
+  /* Gen 5 — Nintendo DS — Unys */
+  {name:"Combat — N",                console:"Nintendo DS",      game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Château de la Team Plasma",     yt:"O0ajBL15Knk"},
+  {name:"Arabelle",                  console:"Nintendo DS",      game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Arabelle",                      yt:"rl9xvQz8o3c"},
+  {name:"Combat — Dresseur",         console:"Nintendo DS",      game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Combat de Dresseur (Unys)",     yt:"3VHvOeuy_Ak"},
+  {name:"Combat final — Ghetis",     console:"Nintendo DS",      game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Antre de Ghetis (Team Plasma)", yt:"LEbLAFHo5Ts"},
+  /* Gen 6 — Nintendo 3DS — Kalos */
+  {name:"Illumis",                   console:"Nintendo 3DS",     game:"Pokémon X · Y",                     region:"Kalos",  zone:"Illumis",                       yt:"WlaBnwzp6dQ"},
+  {name:"Combat — Dresseur",         console:"Nintendo 3DS",     game:"Pokémon X · Y",                     region:"Kalos",  zone:"Combat de Dresseur (Kalos)",    yt:"dia2XIwOuJI"},
+  {name:"Combat — Championne Dianthéa", console:"Nintendo 3DS",  game:"Pokémon X · Y",                     region:"Kalos",  zone:"Ligue Pokémon de Kalos",        yt:"xpgQa-TOk0M"},
+  {name:"Combat — Lysandre (Team Flare)", console:"Nintendo 3DS",game:"Pokémon X · Y",                     region:"Kalos",  zone:"QG de la Team Flare",           yt:"LIsIdfNTC0M"},
+  /* Gen 7 — Nintendo 3DS — Alola */
+  {name:"Combat — Conseil 4 d'Alola",console:"Nintendo 3DS",     game:"Pokémon Soleil · Lune",             region:"Alola",  zone:"Ligue Pokémon d'Alola",         yt:"Dv7AXRqjTuQ"},
+  {name:"Combat — Dresseur",         console:"Nintendo 3DS",     game:"Pokémon Soleil · Lune",             region:"Alola",  zone:"Combat de Dresseur (Alola)",    yt:"KwI02CpAod8"},
+  {name:"Combat — Team Skull (Guzma)",console:"Nintendo 3DS",    game:"Pokémon Soleil · Lune",             region:"Alola",  zone:"Repaire de la Team Skull",      yt:"REC7daXbjho"},
+  /* Gen 8 — Nintendo Switch — Galar */
+  {name:"Combat — Maître Tarak",     console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Stade de Galar",                yt:"dhCjo55vHUw"},
+  {name:"Combat — Champion d'Arène", console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Arène de Galar",                yt:"quYjN57Tycg"},
+  {name:"Combat — Dresseur",         console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Combat de Dresseur (Galar)",    yt:"o0LZKtKV3lI"},
+  {name:"Combat — Pokémon sauvage",  console:"Nintendo Switch",  game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Combat sauvage (Galar)",        yt:"Q9qzH58HtHM"}
 ];
 
 const OST_CONSOLES=[...new Set(OST.map(t=>t.console))];
 const OST_GAMES=[...new Set(OST.map(t=>t.game))];
 const OST_ZONES=[...new Set(OST.map(t=>t.zone))];
-let curTrack=null;
+const pick=(arr,n)=>shuffle(arr).slice(0,n);
 
-function ytSearchUrl(t){return "https://www.youtube.com/results?search_query="+encodeURIComponent("Pokémon "+t.name+" "+t.game);}
-
-function mediaHTML(stage){
-  const steps=["Console","Jeu","Zone"];
-  const funnel='<div class="funnel">'+steps.map(function(s,i){
-    const cls=i<stage?"fstep done":(i===stage?"fstep on":"fstep");
-    return '<span class="'+cls+'">'+(i+1)+'. '+s+'</span>'+(i<2?'<span class="farrow">&#8594;</span>':'');
-  }).join("")+'</div>';
+/* ---- UI : lecteur + volume + entonnoir + 3 groupes de réponses ---- */
+function trioStep(key,label,idx,opts){
+  const btns=opts.map(v=>'<button class="answer-btn" data-val="'+escapeHtml(v)+'">'+escapeHtml(v)+'</button>').join("");
+  return '<div class="trio-step '+(idx===0?"on":"locked")+'" id="trio-step-'+key+'">'+
+    '<p class="trio-label">'+(idx+1)+' &middot; '+label+'</p>'+
+    '<div class="trio-opts" id="trio-opts-'+key+'">'+btns+'</div></div>';
+}
+function mediaHTML(t,opts){
+  const v=getVol();
   return '<div class="music-stage">'+
     '<div class="equalizer">'+eqBarsHTML()+'</div>'+
     '<button class="play-track-btn" id="yt-replay">&#9654; Écouter / Réécouter</button>'+
+    '<div class="vol-row"><button class="vol-btn" id="vol-btn" title="Couper / rétablir le son">'+volIcon(v)+'</button>'+
+      '<input class="vol-slider" id="vol-slider" type="range" min="0" max="100" value="'+v+'" aria-label="Volume">'+
+      '<span class="vol-val" id="vol-val">'+v+'</span></div>'+
     '<p class="yt-note">&#127911; Titre masqué &mdash; à reconnaître à l\'oreille.</p>'+
     '<a class="yt-fallback" id="yt-fallback" style="display:none" target="_blank" rel="noopener" href="#">&#9654; Écouter sur YouTube</a>'+
-    funnel+
+    '<div class="funnel" id="funnel"><span class="fstep on">1. Console</span><span class="farrow">&#8594;</span>'+
+      '<span class="fstep">2. Jeu</span><span class="farrow">&#8594;</span><span class="fstep">3. Zone</span></div>'+
+  '</div>'+
+  '<div class="trio">'+
+    trioStep("console","Console de 1re apparition",0,opts.console)+
+    trioStep("game","Jeu de 1re apparition",1,opts.game)+
+    trioStep("zone","Zone / lieu associé",2,opts.zone)+
   '</div>';
 }
-function wireMedia(t){
-  idleEq();
-  const rb=document.getElementById("yt-replay");if(rb)rb.addEventListener("click",function(){Audio8.click();ytReplay();});
-  const fb=document.getElementById("yt-fallback");if(fb)fb.href=ytSearchUrl(t);
-  ytResume(t);
+function wireVolume(){
+  const slider=document.getElementById("vol-slider"),val=document.getElementById("vol-val"),btn=document.getElementById("vol-btn");
+  if(slider)slider.addEventListener("input",function(){const x=setVol(+slider.value);if(val)val.textContent=x;if(btn)btn.innerHTML=volIcon(x);});
+  if(btn)btn.addEventListener("click",function(){const cur=getVol();const nv=setVol(cur>0?0:70);if(slider)slider.value=nv;if(val)val.textContent=nv;btn.innerHTML=volIcon(nv);});
 }
 
-function qConsole(t){
-  const wrong=shuffle(OST_CONSOLES.filter(c=>c!==t.console)).slice(0,3);
-  return {badge:soundBadge(),tlabel:"— Étape 1 / 3 · La console —",
-    text:"Écoute ce thème. Sur quelle <b>console</b> est-il apparu pour la première fois&#8201;?",
-    media:mediaHTML(0), onMounted:function(){wireMedia(t);},
-    answers:shuffle([t.console,...wrong]),correct:t.console,
-    fbc:"Oui&#8201;! Ce thème est apparu pour la première fois sur "+t.console+".",
-    fbw:"Non — première apparition sur "+t.console+"."};
-}
-function qGame(t){
-  const wrong=shuffle(OST_GAMES.filter(g=>g!==t.game)).slice(0,3);
-  return {badge:soundBadge(),tlabel:"— Étape 2 / 3 · Le jeu —",
-    text:"Et dans quel <b>jeu</b> est-il apparu en premier&#8201;?",
-    media:mediaHTML(1), onMounted:function(){wireMedia(t);},
-    answers:shuffle([t.game,...wrong]),correct:t.game,
-    fbc:"Exact&#8201;! Première apparition dans « "+t.game+" » (sur "+t.console+").",
-    fbw:"Non — première apparition dans « "+t.game+" »."};
-}
-function qZone(t){
-  const wrong=shuffle(OST_ZONES.filter(z=>z!==t.zone)).slice(0,3);
-  return {badge:soundBadge(),tlabel:"— Étape 3 / 3 · La zone —",
-    text:"Enfin, à quel <b>lieu / quelle zone</b> ce thème est-il associé&#8201;?",
-    media:mediaHTML(2), onMounted:function(){wireMedia(t);},
-    answers:shuffle([t.zone,...wrong]),correct:t.zone,
-    fbc:"&#127881; Bravo&#8201;! C'était « "+t.name+" » — "+t.zone+" ("+t.region+" · "+t.game+" · "+t.console+").",
-    fbw:"C'était « "+t.name+" » — zone&#8201;: "+t.zone+" ("+t.region+")."};
+/* ---- montage d'une question (1 morceau, 3 temps) ---- */
+function mountQuestion(t,opts,api){
+  curTrack=t; idleEq(); ytResume(t);
+  const rb=document.getElementById("yt-replay"); if(rb)rb.addEventListener("click",function(){Audio8.click();ytReplay();});
+  const fbk=document.getElementById("yt-fallback"); if(fbk)fbk.href=ytSearchUrl(t);
+  wireVolume();
+
+  const keys=["console","game","zone"], correct={console:t.console,game:t.game,zone:t.zone}, chosen={};
+  const fsteps=document.querySelectorAll("#funnel .fstep");
+  function setFunnel(active){fsteps.forEach(function(el,i){el.className="fstep"+(i<active?" done":(i===active?" on":""));});}
+  function lockStep(key){const s=document.getElementById("trio-step-"+key);s.classList.remove("on");s.classList.add("solved");s.querySelector(".trio-opts").style.pointerEvents="none";}
+  function openStep(key){const s=document.getElementById("trio-step-"+key);s.classList.remove("locked");s.classList.add("on");}
+
+  keys.forEach(function(key,idx){
+    document.querySelectorAll("#trio-opts-"+key+" .answer-btn").forEach(function(b){
+      b.addEventListener("click",function(){
+        if(chosen[key]!==undefined)return;
+        const step=document.getElementById("trio-step-"+key);
+        if(step.classList.contains("locked"))return;
+        chosen[key]=decodeHtml(b.dataset.val);
+        b.classList.add("chosen"); Audio8.click(); lockStep(key);
+        if(idx<2){openStep(keys[idx+1]);setFunnel(idx+1);}
+        else{setFunnel(3);validate();}
+      });
+    });
+  });
+
+  function validate(){
+    let allOk=true,line="";
+    const labels={console:"Console",game:"Jeu",zone:"Zone"};
+    keys.forEach(function(key){
+      const ok=chosen[key]===correct[key]; if(!ok)allOk=false;
+      document.querySelectorAll("#trio-opts-"+key+" .answer-btn").forEach(function(b){
+        b.disabled=true; const val=decodeHtml(b.dataset.val);
+        if(val===correct[key])b.classList.add("correct");
+        else if(b.classList.contains("chosen"))b.classList.add("wrong");
+      });
+      line+=(line?" &middot; ":"")+labels[key]+" "+(ok?"&#10003;":"&#10007;");
+    });
+    const reveal="&#9654; «&#8201;"+escapeHtml(t.name)+"&#8201;» &mdash; "+escapeHtml(t.zone)+" ("+escapeHtml(t.region)+" &middot; "+escapeHtml(t.game)+" &middot; "+escapeHtml(t.console)+").";
+    const fb='<b>'+line+'</b><br>'+reveal+(allOk?"":' <span style="opacity:.85">Les bonnes réponses sont surlignées ci-dessus.</span>');
+    api.resolve(allOk,fb);
+  }
 }
 
 const GAME={
   title:"Studio Sonore",
-  subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et remonte la piste&#8201;: Console &#8594; Jeu &#8594; Zone. Les extraits sont joués depuis YouTube.",
+  subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et, en une seule question, retrouve sa Console, son Jeu et sa Zone de première apparition.",
   eyebrow:"Quiz Musical · à l'oreille",
   hints:false,
   difficulties:["sprint","defi","marathon","infini"],
-  intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. Pour chaque morceau&#8201;: trouve la <b>console</b> de première apparition, puis le <b>jeu</b>, puis la <b>zone</b>. Le son vient de YouTube — pense à activer le volume.</p></div>',
+  intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. Chaque question se joue en 3 temps sur un même morceau&#8201;: <b>Console</b> &#8594; <b>Jeu</b> &#8594; <b>Zone</b>. Le son vient de YouTube — pense à régler le volume.</p></div>',
   makeQuestion(st){
-    if(!st._mq || st._mq.stage>2){ st._mq={track:rand(OST), stage:0}; }
-    const t=st._mq.track, stage=st._mq.stage; st._mq.stage++;
-    curTrack=t;
-    if(stage===0)return qConsole(t);
-    if(stage===1)return qGame(t);
-    return qZone(t);
+    const t=rand(OST);
+    const opts={
+      console:shuffle([t.console,...pick(OST_CONSOLES.filter(c=>c!==t.console),3)]),
+      game:shuffle([t.game,...pick(OST_GAMES.filter(g=>g!==t.game),3)]),
+      zone:shuffle([t.zone,...pick(OST_ZONES.filter(z=>z!==t.zone),3)])
+    };
+    return {
+      custom:true, answers:[],
+      badge:soundBadge(),
+      tlabel:"— Écoute & remonte la piste : Console → Jeu → Zone —",
+      text:"Écoute ce thème (titre masqué), puis réponds aux 3 indices, l'un après l'autre.",
+      media:mediaHTML(t,opts),
+      onMounted:function(q,api){mountQuestion(t,opts,api);}
+    };
   }
 };
 Quiz.mount(GAME);

@@ -350,8 +350,27 @@ const Quiz=(function(){
     document.querySelectorAll("#q-answers .answer-btn").forEach(b=>b.addEventListener("click",()=>choose(b)));
     document.getElementById("q-next").addEventListener("click",next);
     if(G.hints&&q.hint){document.getElementById("q-hint").addEventListener("click",useHint);}
-    if(q.onMounted)q.onMounted(q);
+    if(q.onMounted)q.onMounted(q,{resolve:resolveCustom});
     if(st.timer)startTimer();
+  }
+
+  /* résolution d'une question « personnalisée » (UI maison, ex. Studio Sonore en 3 parties).
+     ok=booléen ; fbHTML=contenu d'explication facultatif. Mutualise le scoring du moteur. */
+  function resolveCustom(ok,fbHTML){
+    if(st.answered)return;st.answered=true;clearTimer();
+    const fb=document.getElementById("q-feedback");
+    if(ok){
+      st.score++;st.streak++;st.best=Math.max(st.best,st.streak);
+      fb.className="feedback correct";
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+'</span>';
+      Audio8.jingleGood();
+    }else{
+      st.streak=0;st.wrong++;if(st.maxLives)st.lives--;
+      fb.className="feedback wrong";
+      fb.innerHTML='<span class="fl">&#10022; Pas tout à fait</span><span class="ft">'+(fbHTML||st.current.fbw||"")+'</span>';
+      Audio8.jingleBad();
+    }
+    finishTurn();
   }
 
   function startTimer(){

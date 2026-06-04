@@ -185,4 +185,25 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .funnel .fstep.done{color:var(--gira-teal-bright);border-color:var(--gira-teal)}
 .funnel .farrow{color:var(--text-muted);font-size:.6rem}
 
-@media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}}
+/* contrôle de volume (Studio Sonore) */
+.vol-row{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.7rem}
+.vol-btn{background:var(--shadow-mid);border:1px solid var(--gira-purple);color:var(--gira-gold);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;transition:all .2s;flex:none}
+.vol-btn:hover{border-color:var(--gira-gold);box-shadow:0 0 12px rgba(200,168,75,.25)}
+.vol-slider{-webkit-appearance:none;appearance:none;width:150px;max-width:45vw;height:4px;border-radius:3px;background:var(--shadow-light);outline:none;cursor:pointer}
+.vol-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--gira-gold);cursor:pointer;box-shadow:0 0 6px rgba(200,168,75,.5)}
+.vol-slider::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--gira-gold);cursor:pointer}
+.vol-val{font-family:'Cinzel Decorative',serif;font-size:.6rem;color:var(--text-secondary);min-width:2.2em;text-align:left}
+
+/* question en 3 parties : Console -> Jeu -> Zone (affichage en 3 temps) */
+.trio{display:flex;flex-direction:column;gap:1rem;margin-top:1.4rem}
+.trio-step{transition:opacity .3s}
+.trio-step.locked{opacity:.32;filter:grayscale(.4)}
+.trio-step.locked .trio-opts{pointer-events:none}
+.trio-label{font-family:'Cinzel Decorative',serif;font-size:.62rem;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.trio-step.on .trio-label{color:var(--gira-gold)}
+.trio-step.solved .trio-label{color:var(--gira-teal-bright)}
+.trio-opts{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.trio-opts .answer-btn{padding:.7rem .8rem;font-size:.92rem}
+.answer-btn.chosen{border-color:var(--gira-gold);background:rgba(200,168,75,.12);box-shadow:0 0 14px rgba(200,168,75,.18)}
+
+@media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}.trio-opts{grid-template-columns:1fr}}

@@ -79,15 +79,19 @@ Le mini-jeu musical fait écouter un **vrai thème des jeux Pokémon**, joué pa
 n'est hébergé dans le dépôt : on ne fait que **référencer** les vidéos — donc **une
 connexion internet est requise** pour ce mini-jeu.
 
-Pour chaque morceau, on remonte la piste en entonnoir :
+Chaque morceau forme **une seule question, jouée en 3 temps** (et non trois questions) :
 
 1. **Console** de première apparition (Game Boy → Nintendo Switch) ;
 2. **Jeu** de première apparition ;
 3. **Zone / lieu** associé.
 
-> La base contient ~19 thèmes réels couvrant 6 consoles. Les identifiants de vidéos
-> vivent dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont faciles à
-> mettre à jour si une vidéo est un jour supprimée.
+On répond aux trois indices l'un après l'autre, puis tout est validé d'un coup : la
+question compte juste si les **trois** parties sont correctes. Un **contrôle de volume**
+(curseur + coupure) est intégré au lecteur et mémorisé.
+
+> La base contient **42 thèmes réels vérifiés** couvrant les 6 consoles. Les identifiants
+> de vidéos vivent dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont
+> faciles à mettre à jour si une vidéo est un jour supprimée.
 
 ## 🏆 Records persistants
 
