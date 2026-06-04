@@ -2,7 +2,13 @@
 
 Quiz Pokémon interactif sur le thème de **Giratina** : 5 mini-jeux, 100 % HTML/CSS/JS.
 
-## 🚀 Jouer (le plus simple)
+## ▶️ Jouer en ligne
+
+**→ https://nhebachi57.github.io/Pokequiz/** (hébergé sur GitHub Pages, branche `main`).
+
+Mis à jour automatiquement à chaque push sur `main`.
+
+## 🚀 Jouer en local (le plus simple)
 
 Double-clique **`index.html`** à la racine. C'est tout.
 
