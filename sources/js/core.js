@@ -188,6 +188,36 @@ function spawnSparkles(el){
 }
 
 /* ============================================================
+   RECORDS — meilleurs scores persistants (localStorage)
+   Identifie le jeu par le nom de fichier de la page (jeu-silhouette…).
+   ============================================================ */
+const GAMEKEY=(function(){try{return ((location.pathname.split("/").pop()||"index").replace(/\.html?$/i,""))||"index";}catch(e){return "index";}})();
+const Records=(function(){
+  const KEY="pokequiz_records_v1";
+  function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}
+  function save(o){try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+  function get(game,mode){const o=load();return (o[game]&&o[game][mode])||null;}
+  /* enregistre une partie ; renvoie le record courant, les drapeaux "nouveau record" et l'ancien record */
+  function submit(game,mode,s){
+    const o=load();o[game]=o[game]||{};
+    const prev=o[game][mode]||{score:0,best:0,pct:0,plays:0};
+    const isNew={score:s.score>(prev.score||0),streak:s.best>(prev.best||0),pct:s.pct>(prev.pct||0)};
+    o[game][mode]={
+      score:Math.max(prev.score||0,s.score),
+      best:Math.max(prev.best||0,s.best),
+      pct:Math.max(prev.pct||0,s.pct),
+      plays:(prev.plays||0)+1
+    };
+    save(o);
+    return {rec:o[game][mode],isNew,prev};
+  }
+  /* meilleure précision tous modes confondus pour un jeu (pour le menu) */
+  function bestPct(game){const o=load();if(!o[game])return null;let m=null;Object.keys(o[game]).forEach(k=>{const v=o[game][k];if(v&&typeof v.pct==="number"&&(m===null||v.pct>m))m=v.pct;});return m;}
+  function clearAll(){try{localStorage.removeItem(KEY);}catch(e){}}
+  return {get,submit,bestPct,clearAll,load};
+})();
+
+/* ============================================================
    MOTEUR DE QUIZ réutilisable
    GAME = { title, subtitle, ambiance, difficulties:[...], makeQuestion(), hints }
    difficulties: tableau de clés parmi DIFFS, ou objets custom
@@ -235,6 +265,7 @@ const Quiz=(function(){
         '<h2 class="res-title" id="q-rtitle"></h2><p class="res-flavor" id="q-rflavor"></p>'+
         '<div class="sep"></div>'+
         '<div class="res-break" id="q-break"></div>'+
+        '<p class="rec-line" id="q-recline"></p>'+
         '<div class="res-btns">'+
           '<button class="res-btn primary" id="q-replay">Rejouer</button>'+
           '<button class="res-btn secondary" id="q-change">Changer de mode</button>'+
@@ -244,17 +275,28 @@ const Quiz=(function(){
 
     const modes=document.getElementById("q-modes");
     G.difficulties.forEach(d=>{
-      const c=document.createElement("div");c.className="mode-card"+(d.cls?(" "+d.cls):"");
-      c.innerHTML='<span class="mi">'+d.icon+'</span><p class="mn">'+d.label+'</p><p class="md">'+d.desc+'</p>';
+      const c=document.createElement("div");c.className="mode-card"+(d.cls?(" "+d.cls):"");c.dataset.mode=d.key;
+      c.innerHTML='<span class="mi">'+d.icon+'</span><p class="mn">'+d.label+'</p><p class="md">'+d.desc+'</p><p class="mrec"></p>';
       c.addEventListener("click",()=>{Audio8.click();start(d);});
       modes.appendChild(c);
     });
     document.getElementById("q-quit").addEventListener("click",quit);
     document.getElementById("q-replay").addEventListener("click",()=>{Audio8.click();start(st.diff);});
     document.getElementById("q-change").addEventListener("click",()=>{Audio8.click();Audio8.stopLoop();showS("q-start");});
+    refreshModeRecords();
   }
 
-  function showS(id){document.querySelectorAll("#app .screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");scrollTo(0,0);}
+  /* met à jour la ligne de record sous chaque carte de mode (rejoue les valeurs sauvegardées) */
+  function refreshModeRecords(){
+    document.querySelectorAll("#q-modes .mode-card").forEach(c=>{
+      const el=c.querySelector(".mrec");if(!el)return;
+      const r=Records.get(GAMEKEY,c.dataset.mode);
+      if(r&&r.plays){el.className="mrec";el.innerHTML='&#9670; Record&#8201;: '+r.score+' pts &middot; '+r.pct+'% &middot; s&eacute;rie '+r.best;}
+      else{el.className="mrec mrec-empty";el.innerHTML='&#9670; Aucun record &mdash; à toi de jouer';}
+    });
+  }
+
+  function showS(id){document.querySelectorAll("#app .screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");if(id==="q-start")refreshModeRecords();scrollTo(0,0);}
 
   function start(d){
     st={diff:d,total:d.n===0?Infinity:d.n,infinite:d.n===0,lives:d.lives||0,maxLives:d.lives||0,
@@ -387,18 +429,29 @@ const Quiz=(function(){
 
   function results(){
     clearTimer();Audio8.stopLoop();
-    const total=st.infinite?st.i:(st.maxLives?st.i+ (st.lives<=0?1:0):st.total);
-    const answered=st.infinite?st.i:(st.maxLives? (st.score+st.wrong):st.total);
     const denom=Math.max(1,(st.score+st.wrong));
     const pct=Math.round(st.score/denom*100);
     document.getElementById("q-pct").textContent=pct+"%";
     const t=tier(pct);
     document.getElementById("q-rtitle").textContent=t[0];
     document.getElementById("q-rflavor").textContent=t[1];
+
+    /* enregistre la partie et récupère les drapeaux "nouveau record" */
+    const sub=Records.submit(GAMEKEY,st.diff.key,{score:st.score,best:st.best,pct:pct});
+    const star=f=>f?' <span class="rec-new">&#9733; Record</span>':'';
+
     document.getElementById("q-break").innerHTML=
-      '<div class="bi"><span class="num" style="color:var(--gira-teal-bright)">'+st.score+'</span><span class="lbl">Correct</span></div>'+
+      '<div class="bi"><span class="num" style="color:var(--gira-teal-bright)">'+st.score+'</span><span class="lbl">Correct'+star(sub.isNew.score)+'</span></div>'+
       '<div class="bi"><span class="num" style="color:#ff8080">'+st.wrong+'</span><span class="lbl">Raté</span></div>'+
-      '<div class="bi"><span class="num" style="color:var(--gira-gold)">'+st.best+'</span><span class="lbl">Meilleure série</span></div>';
+      '<div class="bi"><span class="num" style="color:var(--gira-gold)">'+st.best+'</span><span class="lbl">Meilleure série'+star(sub.isNew.streak)+'</span></div>';
+
+    /* ligne de record persistant (mémoire du mode joué) */
+    const rec=sub.rec,rl=document.getElementById("q-recline");
+    if(rl){
+      const fresh=sub.isNew.score||sub.isNew.streak||sub.isNew.pct;
+      rl.innerHTML=(fresh?'<span class="rec-bravo">&#9733; Nouveau record&#8201;!</span> ':'')+
+        '&#9670; Meilleur en '+st.diff.label+'&#8201;: '+rec.score+' pts &middot; '+rec.pct+'% de précision &middot; série '+rec.best+' &middot; '+rec.plays+' partie'+(rec.plays>1?'s':'');
+    }
     showS("q-results");
   }
   function tier(p){

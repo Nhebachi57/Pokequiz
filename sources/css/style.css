@@ -59,6 +59,9 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .badge-new{background:rgba(200,168,75,.2);color:var(--gira-gold);border:.5px solid var(--gira-gold)}
 .badge-hard{background:rgba(139,26,58,.3);color:#ff8080;border:.5px solid var(--gira-crimson)}
 .badge-music{background:rgba(42,168,196,.2);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.menu-rec{display:block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.05em;color:var(--gira-gold);opacity:.85;position:relative;z-index:1}
+.menu-reset{margin-top:1.4rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.12em;color:var(--text-muted);background:none;border:none;cursor:pointer;text-transform:uppercase;transition:color .25s}
+.menu-reset:hover{color:#ff8080}
 
 /* app container (each game) */
 #app{position:relative;z-index:1}
@@ -73,6 +76,8 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .mode-card .mi{font-size:2.2rem;margin-bottom:.4rem;display:block}
 .mode-card .mn{font-family:'Cinzel Decorative',serif;font-size:.76rem;font-weight:700;color:var(--gira-gold);letter-spacing:.06em;margin-bottom:.4rem}
 .mode-card .md{font-size:.85rem;color:var(--text-secondary);font-style:italic;line-height:1.4}
+.mode-card .mrec{margin-top:.7rem;padding-top:.6rem;border-top:.5px solid rgba(200,168,75,.18);font-family:'Cinzel Decorative',serif;font-size:.56rem;letter-spacing:.04em;color:var(--gira-gold);opacity:.9}
+.mode-card .mrec-empty{color:var(--text-muted);opacity:.7}
 
 /* game screen */
 .game-wrap{min-height:100vh;padding:1.5rem 1rem;max-width:720px;margin:0 auto}
@@ -144,6 +149,9 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .res-break{display:flex;gap:1.8rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
 .bi{text-align:center}.bi .num{font-family:'Cinzel Decorative',serif;font-size:1.8rem;display:block}
 .bi .lbl{font-size:.7rem;color:var(--text-muted);letter-spacing:.12em;font-family:'Cinzel Decorative',serif}
+.rec-new{display:inline-block;font-family:'Cinzel Decorative',serif;font-size:.5rem;letter-spacing:.06em;color:var(--gira-gold);vertical-align:middle}
+.rec-line{font-size:.85rem;color:var(--text-secondary);font-style:italic;margin:-1rem 0 1.8rem;max-width:480px;line-height:1.5}
+.rec-bravo{color:var(--gira-gold-bright);font-family:'Cinzel Decorative',serif;font-style:normal;font-size:.7rem;letter-spacing:.08em;animation:rune 1.6s ease-in-out infinite}
 .res-btns{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center}
 .res-btn{padding:.8rem 1.6rem;border-radius:4px;cursor:pointer;font-family:'Cinzel Decorative',serif;font-size:.62rem;letter-spacing:.12em;transition:all .25s;text-decoration:none;display:inline-block}
 .res-btn.primary{background:var(--gira-purple);border:1px solid var(--gira-purple-bright);color:var(--text-primary)}

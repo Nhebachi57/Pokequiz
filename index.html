@@ -9,6 +9,7 @@
 /* ============================================================
    PokéQuiz — Monde des Ombres · styles partagés (thème Giratina)
    ============================================================ */
+
 :root{
   --void:#050508; --shadow-deep:#0a0a14; --shadow-mid:#121225; --shadow-light:#1e1e3a;
   --gira-gold:#c8a84b; --gira-gold-bright:#f0cc6e;
@@ -65,6 +66,9 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .badge-new{background:rgba(200,168,75,.2);color:var(--gira-gold);border:.5px solid var(--gira-gold)}
 .badge-hard{background:rgba(139,26,58,.3);color:#ff8080;border:.5px solid var(--gira-crimson)}
 .badge-music{background:rgba(42,168,196,.2);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.menu-rec{display:block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.05em;color:var(--gira-gold);opacity:.85;position:relative;z-index:1}
+.menu-reset{margin-top:1.4rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.12em;color:var(--text-muted);background:none;border:none;cursor:pointer;text-transform:uppercase;transition:color .25s}
+.menu-reset:hover{color:#ff8080}
 
 /* app container (each game) */
 #app{position:relative;z-index:1}
@@ -79,6 +83,8 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .mode-card .mi{font-size:2.2rem;margin-bottom:.4rem;display:block}
 .mode-card .mn{font-family:'Cinzel Decorative',serif;font-size:.76rem;font-weight:700;color:var(--gira-gold);letter-spacing:.06em;margin-bottom:.4rem}
 .mode-card .md{font-size:.85rem;color:var(--text-secondary);font-style:italic;line-height:1.4}
+.mode-card .mrec{margin-top:.7rem;padding-top:.6rem;border-top:.5px solid rgba(200,168,75,.18);font-family:'Cinzel Decorative',serif;font-size:.56rem;letter-spacing:.04em;color:var(--gira-gold);opacity:.9}
+.mode-card .mrec-empty{color:var(--text-muted);opacity:.7}
 
 /* game screen */
 .game-wrap{min-height:100vh;padding:1.5rem 1rem;max-width:720px;margin:0 auto}
@@ -150,6 +156,9 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .res-break{display:flex;gap:1.8rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
 .bi{text-align:center}.bi .num{font-family:'Cinzel Decorative',serif;font-size:1.8rem;display:block}
 .bi .lbl{font-size:.7rem;color:var(--text-muted);letter-spacing:.12em;font-family:'Cinzel Decorative',serif}
+.rec-new{display:inline-block;font-family:'Cinzel Decorative',serif;font-size:.5rem;letter-spacing:.06em;color:var(--gira-gold);vertical-align:middle}
+.rec-line{font-size:.85rem;color:var(--text-secondary);font-style:italic;margin:-1rem 0 1.8rem;max-width:480px;line-height:1.5}
+.rec-bravo{color:var(--gira-gold-bright);font-family:'Cinzel Decorative',serif;font-style:normal;font-size:.7rem;letter-spacing:.08em;animation:rune 1.6s ease-in-out infinite}
 .res-btns{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center}
 .res-btn{padding:.8rem 1.6rem;border-radius:4px;cursor:pointer;font-family:'Cinzel Decorative',serif;font-size:.62rem;letter-spacing:.12em;transition:all .25s;text-decoration:none;display:inline-block}
 .res-btn.primary{background:var(--gira-purple);border:1px solid var(--gira-purple-bright);color:var(--text-primary)}
@@ -173,7 +182,6 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .juke-btn.active{border-color:var(--gira-gold);color:var(--gira-gold);box-shadow:0 0 14px rgba(200,168,75,.25)}
 
 @media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}}
-
 </style>
 </head>
 <body>
@@ -425,6 +433,36 @@ function spawnSparkles(el){
 }
 
 /* ============================================================
+   RECORDS — meilleurs scores persistants (localStorage)
+   Identifie le jeu par le nom de fichier de la page (jeu-silhouette…).
+   ============================================================ */
+const GAMEKEY=(function(){try{return ((location.pathname.split("/").pop()||"index").replace(/\.html?$/i,""))||"index";}catch(e){return "index";}})();
+const Records=(function(){
+  const KEY="pokequiz_records_v1";
+  function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}
+  function save(o){try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+  function get(game,mode){const o=load();return (o[game]&&o[game][mode])||null;}
+  /* enregistre une partie ; renvoie le record courant, les drapeaux "nouveau record" et l'ancien record */
+  function submit(game,mode,s){
+    const o=load();o[game]=o[game]||{};
+    const prev=o[game][mode]||{score:0,best:0,pct:0,plays:0};
+    const isNew={score:s.score>(prev.score||0),streak:s.best>(prev.best||0),pct:s.pct>(prev.pct||0)};
+    o[game][mode]={
+      score:Math.max(prev.score||0,s.score),
+      best:Math.max(prev.best||0,s.best),
+      pct:Math.max(prev.pct||0,s.pct),
+      plays:(prev.plays||0)+1
+    };
+    save(o);
+    return {rec:o[game][mode],isNew,prev};
+  }
+  /* meilleure précision tous modes confondus pour un jeu (pour le menu) */
+  function bestPct(game){const o=load();if(!o[game])return null;let m=null;Object.keys(o[game]).forEach(k=>{const v=o[game][k];if(v&&typeof v.pct==="number"&&(m===null||v.pct>m))m=v.pct;});return m;}
+  function clearAll(){try{localStorage.removeItem(KEY);}catch(e){}}
+  return {get,submit,bestPct,clearAll,load};
+})();
+
+/* ============================================================
    MOTEUR DE QUIZ réutilisable
    GAME = { title, subtitle, ambiance, difficulties:[...], makeQuestion(), hints }
    difficulties: tableau de clés parmi DIFFS, ou objets custom
@@ -472,6 +510,7 @@ const Quiz=(function(){
         '<h2 class="res-title" id="q-rtitle"></h2><p class="res-flavor" id="q-rflavor"></p>'+
         '<div class="sep"></div>'+
         '<div class="res-break" id="q-break"></div>'+
+        '<p class="rec-line" id="q-recline"></p>'+
         '<div class="res-btns">'+
           '<button class="res-btn primary" id="q-replay">Rejouer</button>'+
           '<button class="res-btn secondary" id="q-change">Changer de mode</button>'+
@@ -481,17 +520,28 @@ const Quiz=(function(){
 
     const modes=document.getElementById("q-modes");
     G.difficulties.forEach(d=>{
-      const c=document.createElement("div");c.className="mode-card"+(d.cls?(" "+d.cls):"");
-      c.innerHTML='<span class="mi">'+d.icon+'</span><p class="mn">'+d.label+'</p><p class="md">'+d.desc+'</p>';
+      const c=document.createElement("div");c.className="mode-card"+(d.cls?(" "+d.cls):"");c.dataset.mode=d.key;
+      c.innerHTML='<span class="mi">'+d.icon+'</span><p class="mn">'+d.label+'</p><p class="md">'+d.desc+'</p><p class="mrec"></p>';
       c.addEventListener("click",()=>{Audio8.click();start(d);});
       modes.appendChild(c);
     });
     document.getElementById("q-quit").addEventListener("click",quit);
     document.getElementById("q-replay").addEventListener("click",()=>{Audio8.click();start(st.diff);});
     document.getElementById("q-change").addEventListener("click",()=>{Audio8.click();Audio8.stopLoop();showS("q-start");});
+    refreshModeRecords();
   }
 
-  function showS(id){document.querySelectorAll("#app .screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");scrollTo(0,0);}
+  /* met à jour la ligne de record sous chaque carte de mode (rejoue les valeurs sauvegardées) */
+  function refreshModeRecords(){
+    document.querySelectorAll("#q-modes .mode-card").forEach(c=>{
+      const el=c.querySelector(".mrec");if(!el)return;
+      const r=Records.get(GAMEKEY,c.dataset.mode);
+      if(r&&r.plays){el.className="mrec";el.innerHTML='&#9670; Record&#8201;: '+r.score+' pts &middot; '+r.pct+'% &middot; s&eacute;rie '+r.best;}
+      else{el.className="mrec mrec-empty";el.innerHTML='&#9670; Aucun record &mdash; à toi de jouer';}
+    });
+  }
+
+  function showS(id){document.querySelectorAll("#app .screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");if(id==="q-start")refreshModeRecords();scrollTo(0,0);}
 
   function start(d){
     st={diff:d,total:d.n===0?Infinity:d.n,infinite:d.n===0,lives:d.lives||0,maxLives:d.lives||0,
@@ -624,18 +674,29 @@ const Quiz=(function(){
 
   function results(){
     clearTimer();Audio8.stopLoop();
-    const total=st.infinite?st.i:(st.maxLives?st.i+ (st.lives<=0?1:0):st.total);
-    const answered=st.infinite?st.i:(st.maxLives? (st.score+st.wrong):st.total);
     const denom=Math.max(1,(st.score+st.wrong));
     const pct=Math.round(st.score/denom*100);
     document.getElementById("q-pct").textContent=pct+"%";
     const t=tier(pct);
     document.getElementById("q-rtitle").textContent=t[0];
     document.getElementById("q-rflavor").textContent=t[1];
+
+    /* enregistre la partie et récupère les drapeaux "nouveau record" */
+    const sub=Records.submit(GAMEKEY,st.diff.key,{score:st.score,best:st.best,pct:pct});
+    const star=f=>f?' <span class="rec-new">&#9733; Record</span>':'';
+
     document.getElementById("q-break").innerHTML=
-      '<div class="bi"><span class="num" style="color:var(--gira-teal-bright)">'+st.score+'</span><span class="lbl">Correct</span></div>'+
+      '<div class="bi"><span class="num" style="color:var(--gira-teal-bright)">'+st.score+'</span><span class="lbl">Correct'+star(sub.isNew.score)+'</span></div>'+
       '<div class="bi"><span class="num" style="color:#ff8080">'+st.wrong+'</span><span class="lbl">Raté</span></div>'+
-      '<div class="bi"><span class="num" style="color:var(--gira-gold)">'+st.best+'</span><span class="lbl">Meilleure série</span></div>';
+      '<div class="bi"><span class="num" style="color:var(--gira-gold)">'+st.best+'</span><span class="lbl">Meilleure série'+star(sub.isNew.streak)+'</span></div>';
+
+    /* ligne de record persistant (mémoire du mode joué) */
+    const rec=sub.rec,rl=document.getElementById("q-recline");
+    if(rl){
+      const fresh=sub.isNew.score||sub.isNew.streak||sub.isNew.pct;
+      rl.innerHTML=(fresh?'<span class="rec-bravo">&#9733; Nouveau record&#8201;!</span> ':'')+
+        '&#9670; Meilleur en '+st.diff.label+'&#8201;: '+rec.score+' pts &middot; '+rec.pct+'% de précision &middot; série '+rec.best+' &middot; '+rec.plays+' partie'+(rec.plays>1?'s':'');
+    }
     showS("q-results");
   }
   function tier(p){
@@ -657,7 +718,24 @@ function pkmnBadge(p,hidden){
 }
 function soundBadge(){return '<div class="q-badge" style="background:rgba(42,168,196,.13);color:var(--gira-teal-bright);border:.5px solid rgba(42,168,196,.4);">&#127925; Bande-son</div>';}
 function typeBadge(label){return '<div class="q-badge" style="background:rgba(200,168,75,.13);color:var(--gira-gold);border:.5px solid rgba(200,168,75,.4);">&#9889; '+label+'</div>';}
+</script>
 
+<script>
+/* annotation des records sur les tuiles du menu + reset */
+(function menuRecords(){
+  document.querySelectorAll(".menu-grid .menu-btn").forEach(function(a){
+    var href=a.getAttribute("href")||"";var key=href.replace(/.html?$/i,"");
+    var p=Records.bestPct(key);
+    if(p!==null){var s=document.createElement("span");s.className="menu-rec";s.innerHTML="&#9670; Meilleure pr&eacute;cision&#8201;: "+p+"%";a.appendChild(s);}
+  });
+  var grid=document.querySelector(".menu-grid");
+  if(grid&&!document.getElementById("menu-reset")){
+    var raw=Records.load();if(!Object.keys(raw).length)return;
+    var b=document.createElement("button");b.id="menu-reset";b.className="menu-reset";b.innerHTML="&#9851; R&eacute;initialiser les records";
+    b.addEventListener("click",function(){if(confirm("Effacer tous tes records enregistrés ?")){Records.clearAll();location.reload();}});
+    grid.parentNode.appendChild(b);
+  }
+})();
 </script>
 </body>
 </html>

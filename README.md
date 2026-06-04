@@ -67,6 +67,19 @@ lance un petit serveur local depuis `sources/` adapté, ou ouvre via un serveur 
 Base de 41 Pokémon, table des 18 types, banque musicale, synthé chiptune (mélodies
 **originales**, pas les BO officielles), particules, score / séries / résultats.
 
+## 🏆 Records persistants
+
+Tes meilleurs scores sont mémorisés **sur ton appareil** (localStorage, aucun compte
+ni serveur). Pour chaque jeu **et** chaque mode, le jeu retient ton meilleur score, ta
+meilleure précision et ta plus longue série :
+
+- sous chaque carte de mode → ton record actuel (ou « Aucun record » la première fois) ;
+- sur l'écran de résultats → mise en avant **« ★ Nouveau record ! »** quand tu te dépasses ;
+- sur le menu principal → la **meilleure précision** atteinte par jeu, plus un bouton
+  *Réinitialiser les records* (apparaît dès qu'au moins un record existe).
+
+> Les records sont liés au navigateur utilisé. Vider les données du site les efface.
+
 ## 🖼️ Crédits
 
 Sprites : Pokémon Showdown + PokéAPI (rendus 3D HOME / artworks).
