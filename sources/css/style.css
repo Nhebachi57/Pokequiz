@@ -175,4 +175,14 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .juke-btn:hover{border-color:var(--gira-teal);color:var(--gira-teal-bright)}
 .juke-btn.active{border-color:var(--gira-gold);color:var(--gira-gold);box-shadow:0 0 14px rgba(200,168,75,.25)}
 
+/* lecteur YouTube masqué (quiz « à l'oreille ») + UI du Studio Sonore */
+#yt-stage{position:fixed;left:-10000px;top:-10000px;width:200px;height:200px;opacity:0;pointer-events:none;z-index:-1}
+.yt-note{font-size:.75rem;color:var(--text-muted);font-style:italic;text-align:center;margin-top:.4rem}
+.yt-fallback{display:inline-block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.6rem;letter-spacing:.08em;color:var(--gira-teal-bright);border:1px solid var(--gira-teal);padding:.35rem .8rem;border-radius:4px}
+.funnel{display:flex;align-items:center;justify-content:center;gap:.35rem;margin-top:.6rem;flex-wrap:wrap}
+.funnel .fstep{font-family:'Cinzel Decorative',serif;font-size:.52rem;letter-spacing:.06em;color:var(--text-muted);padding:.2rem .55rem;border:.5px solid var(--shadow-light);border-radius:20px;white-space:nowrap}
+.funnel .fstep.on{color:var(--gira-gold);border-color:var(--gira-gold);box-shadow:0 0 10px rgba(200,168,75,.2)}
+.funnel .fstep.done{color:var(--gira-teal-bright);border-color:var(--gira-teal)}
+.funnel .farrow{color:var(--text-muted);font-size:.6rem}
+
 @media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}}

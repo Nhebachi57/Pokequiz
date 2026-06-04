@@ -181,6 +181,16 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .juke-btn:hover{border-color:var(--gira-teal);color:var(--gira-teal-bright)}
 .juke-btn.active{border-color:var(--gira-gold);color:var(--gira-gold);box-shadow:0 0 14px rgba(200,168,75,.25)}
 
+/* lecteur YouTube masqué (quiz « à l'oreille ») + UI du Studio Sonore */
+#yt-stage{position:fixed;left:-10000px;top:-10000px;width:200px;height:200px;opacity:0;pointer-events:none;z-index:-1}
+.yt-note{font-size:.75rem;color:var(--text-muted);font-style:italic;text-align:center;margin-top:.4rem}
+.yt-fallback{display:inline-block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.6rem;letter-spacing:.08em;color:var(--gira-teal-bright);border:1px solid var(--gira-teal);padding:.35rem .8rem;border-radius:4px}
+.funnel{display:flex;align-items:center;justify-content:center;gap:.35rem;margin-top:.6rem;flex-wrap:wrap}
+.funnel .fstep{font-family:'Cinzel Decorative',serif;font-size:.52rem;letter-spacing:.06em;color:var(--text-muted);padding:.2rem .55rem;border:.5px solid var(--shadow-light);border-radius:20px;white-space:nowrap}
+.funnel .fstep.on{color:var(--gira-gold);border-color:var(--gira-gold);box-shadow:0 0 10px rgba(200,168,75,.2)}
+.funnel .fstep.done{color:var(--gira-teal-bright);border-color:var(--gira-teal)}
+.funnel .farrow{color:var(--text-muted);font-size:.6rem}
+
 @media (max-width:520px){.answers-grid{grid-template-columns:1fr}.menu-grid{grid-template-columns:1fr;max-width:320px}}
 </style>
 </head>
@@ -664,71 +674,162 @@ function soundBadge(){return '<div class="q-badge" style="background:rgba(42,168
 function typeBadge(label){return '<div class="q-badge" style="background:rgba(200,168,75,.13);color:var(--gira-gold);border:.5px solid rgba(200,168,75,.4);">&#9889; '+label+'</div>';}
 </script>
 <script>
+/* ============================================================
+   STUDIO SONORE — Quiz « vraie musique » (YouTube)
+   On écoute un vrai thème (titre masqué) et on remonte la piste en
+   entonnoir : 1) la CONSOLE de première apparition → 2) le JEU → 3) la ZONE.
+   L'audio est joué par le lecteur YouTube officiel intégré : rien n'est
+   hébergé ici, on ne fait que référencer les vidéos.
+   ============================================================ */
+
+/* ---- équaliseur décoratif ---- */
 let eqTimer=null;
 function eqBarsHTML(){let b="";for(let i=0;i<16;i++)b+='<span class="bar"></span>';return b;}
 function idleEq(){clearInterval(eqTimer);const bars=document.querySelectorAll(".equalizer .bar");if(!bars.length)return;eqTimer=setInterval(()=>{bars.forEach(b=>b.style.height=(8+Math.random()*8)+"px");},400);}
-function pulseEq(ms){clearInterval(eqTimer);const bars=document.querySelectorAll(".equalizer .bar");if(!bars.length)return;let beat=0;eqTimer=setInterval(()=>{bars.forEach((b,i)=>{b.style.height=(12+Math.abs(Math.sin((beat+i)*.6))*46+Math.random()*8)+"px";});beat++;},90);setTimeout(idleEq,ms||6000);}
+function pulseEq(ms){clearInterval(eqTimer);const bars=document.querySelectorAll(".equalizer .bar");if(!bars.length)return;let beat=0;eqTimer=setInterval(()=>{bars.forEach((b,i)=>{b.style.height=(12+Math.abs(Math.sin((beat+i)*.6))*46+Math.random()*8)+"px";});beat++;},90);if(ms)setTimeout(idleEq,ms);}
 
-// QUESTION : trivia
-function qTrivia(){
-  const it=rand(MUSIC_BANK);
-  return {badge:soundBadge(),tlabel:"— Studio Sonore : culture —",
-    text:it.q,
-    media:'<div class="music-stage"><div class="equalizer">'+eqBarsHTML()+'</div></div>',
-    onMounted:idleEq,
-    answers:shuffle([it.correct,...it.wrong]),correct:it.correct,
-    fbc:"Bien vu&#8201;! "+it.fb, fbw:"Pas tout à fait. "+it.fb};
+/* ---- lecteur YouTube masqué (titre caché → on devine à l'oreille) ---- */
+let YT_READY=false, ytPlayer=null, ytPending=null, ytCurId=null, ytStopT=null;
+(function mountYT(){
+  if(!document.getElementById("yt-stage")){
+    const st=document.createElement("div");st.id="yt-stage";st.innerHTML='<div id="yt-host"></div>';
+    document.body.appendChild(st);
+  }
+  if(!document.getElementById("yt-api")){
+    const tag=document.createElement("script");tag.id="yt-api";tag.src="https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  }
+})();
+window.onYouTubeIframeAPIReady=function(){
+  ytPlayer=new YT.Player("yt-host",{height:"200",width:"200",
+    playerVars:{playsinline:1,controls:0,disablekb:1,modestbranding:1,rel:0,fs:0,iv_load_policy:3},
+    events:{onReady:function(){YT_READY=true;if(ytPending){const p=ytPending;ytPending=null;ytLoad(p.id,p.start);}},onError:ytError}});
+};
+function ytLoad(id,start){
+  if(!YT_READY||!ytPlayer||!ytPlayer.loadVideoById){ytPending={id:id,start:start};return;}
+  ytCurId=id;
+  try{ytPlayer.loadVideoById({videoId:id,startSeconds:start||0});}catch(e){}
+  if(ytStopT)clearTimeout(ytStopT);
+  ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},22000);
+  pulseEq(22000);
 }
-// QUESTION : devine l'ambiance (joue un chiptune ORIGINAL)
-function qAmbiance(){
-  const songs=Audio8.songList();
-  const song=rand(songs);
-  const correct=Audio8.songMood(song);
-  const wrongMoods=shuffle(songs.filter(s=>s!==song).map(s=>Audio8.songMood(s))).slice(0,3);
-  return {badge:soundBadge(),tlabel:"— Studio Sonore : à l'oreille —",
-    text:"Écoute cet extrait chiptune original. Quelle ambiance évoque-t-il&#8201;?",
-    media:'<div class="music-stage"><div class="equalizer">'+eqBarsHTML()+'</div>'+
-          '<button class="play-track-btn" id="replay-x">&#9654; Réécouter l\'extrait</button></div>',
-    onMounted:function(){
-      const play=()=>{Audio8.stopLoop();Audio8.playSong(song,false);pulseEq(5000);};
-      play();
-      const btn=document.getElementById("replay-x");if(btn)btn.addEventListener("click",play);
-    },
-    answers:shuffle([correct,...wrongMoods]),correct:correct,
-    fbc:"Oreille affûtée&#8201;! C'était bien une ambiance « "+correct+" ».",
-    fbw:"C'était une ambiance « "+correct+" »."};
+function ytResume(t){
+  if(!YT_READY||!ytPlayer){ytPending={id:t.yt,start:t.start};return;}
+  if(t.yt===ytCurId){
+    try{ytPlayer.playVideo();}catch(e){}
+    if(ytStopT)clearTimeout(ytStopT);
+    ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},22000);
+    pulseEq(22000);return;
+  }
+  ytLoad(t.yt,t.start);
+}
+function ytReplay(){if(curTrack)ytLoad(curTrack.yt,curTrack.start);}
+function ytError(){const f=document.getElementById("yt-fallback");if(f)f.style.display="inline-block";}
+
+/* ---- base de morceaux RÉELS : nom · console de 1re apparition · jeu · région · zone · vidéo YouTube ---- */
+const OST=[
+  /* Génération 1 — Game Boy — Kanto */
+  {name:"Bourg Palette",            console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg Palette",              yt:"cOWRNLaCMJg", start:0},
+  {name:"Route 1",                  console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Route 1",                    yt:"u0G12EBW4KY", start:0},
+  {name:"Bourg de Lavanville",      console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Bourg de Lavanville",        yt:"JNJJ-QkZ8cM", start:0},
+  {name:"Centre Pokémon",           console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Centre Pokémon",             yt:"MjZIjHu0OfY", start:0},
+  {name:"Combat — Pokémon sauvage", console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Combat — Pokémon sauvage",   yt:"NrS523dOHU4", start:0},
+  {name:"Combat — Champion d'Arène",console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Arène Pokémon",              yt:"RJKIrqO1Zas", start:0},
+  {name:"Combat final — Rival",     console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Plateau Indigo (Ligue)",     yt:"FngEa4LQd0M", start:0},
+  {name:"Repaire de la Team Rocket",console:"Game Boy",          game:"Pokémon Rouge · Bleu · Jaune",      region:"Kanto",  zone:"Repaire de la Team Rocket",  yt:"5kiKM2f2j_o", start:0},
+  /* Génération 2 — Game Boy Color — Johto */
+  {name:"Bourg Geon",               console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Bourg Geon",                 yt:"D0j9AOEhzO8", start:0},
+  {name:"Doublonville",             console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Doublonville",               yt:"Qyv-ZtUR6P8", start:0},
+  {name:"Combat — Dresseur Red",    console:"Game Boy Color",    game:"Pokémon Or · Argent · Cristal",     region:"Johto",  zone:"Mont Argenté",               yt:"Jxk9DqdYsJ4", start:0},
+  /* Génération 3 — Game Boy Advance — Hoenn */
+  {name:"Bourg en Vol",             console:"Game Boy Advance",  game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Bourg en Vol",               yt:"im6tbN9SZXs", start:0},
+  {name:"Route 110 — Piste Cyclable",console:"Game Boy Advance", game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Route 110 — Piste Cyclable", yt:"H4rHZs9QWGQ", start:0},
+  {name:"Combat — Groudon / Kyogre",console:"Game Boy Advance",  game:"Pokémon Rubis · Saphir · Émeraude", region:"Hoenn",  zone:"Grotte Origine",             yt:"r2BWx32tXXo", start:0},
+  /* Génération 4 — Nintendo DS — Sinnoh */
+  {name:"Combat — Maître Cynthia",  console:"Nintendo DS",       game:"Pokémon Diamant · Perle · Platine", region:"Sinnoh", zone:"Ligue Pokémon de Sinnoh",    yt:"rXefFHRgyE0", start:0},
+  /* Génération 5 — Nintendo DS — Unys */
+  {name:"Combat — N",               console:"Nintendo DS",       game:"Pokémon Noir · Blanc",              region:"Unys",   zone:"Château de la Team Plasma",  yt:"O0ajBL15Knk", start:0},
+  /* Génération 6 — Nintendo 3DS — Kalos */
+  {name:"Illumis",                  console:"Nintendo 3DS",      game:"Pokémon X · Y",                     region:"Kalos",  zone:"Illumis",                    yt:"WlaBnwzp6dQ", start:0},
+  /* Génération 7 — Nintendo 3DS — Alola */
+  {name:"Combat — Conseil 4 d'Alola",console:"Nintendo 3DS",     game:"Pokémon Soleil · Lune",             region:"Alola",  zone:"Ligue Pokémon d'Alola",      yt:"Dv7AXRqjTuQ", start:0},
+  /* Génération 8 — Nintendo Switch — Galar */
+  {name:"Combat — Maître Tarak",    console:"Nintendo Switch",   game:"Pokémon Épée · Bouclier",           region:"Galar",  zone:"Stade de Galar",             yt:"dhCjo55vHUw", start:0}
+];
+
+const OST_CONSOLES=[...new Set(OST.map(t=>t.console))];
+const OST_GAMES=[...new Set(OST.map(t=>t.game))];
+const OST_ZONES=[...new Set(OST.map(t=>t.zone))];
+let curTrack=null;
+
+function ytSearchUrl(t){return "https://www.youtube.com/results?search_query="+encodeURIComponent("Pokémon "+t.name+" "+t.game);}
+
+function mediaHTML(stage){
+  const steps=["Console","Jeu","Zone"];
+  const funnel='<div class="funnel">'+steps.map(function(s,i){
+    const cls=i<stage?"fstep done":(i===stage?"fstep on":"fstep");
+    return '<span class="'+cls+'">'+(i+1)+'. '+s+'</span>'+(i<2?'<span class="farrow">&#8594;</span>':'');
+  }).join("")+'</div>';
+  return '<div class="music-stage">'+
+    '<div class="equalizer">'+eqBarsHTML()+'</div>'+
+    '<button class="play-track-btn" id="yt-replay">&#9654; Écouter / Réécouter</button>'+
+    '<p class="yt-note">&#127911; Titre masqué &mdash; à reconnaître à l\'oreille.</p>'+
+    '<a class="yt-fallback" id="yt-fallback" style="display:none" target="_blank" rel="noopener" href="#">&#9654; Écouter sur YouTube</a>'+
+    funnel+
+  '</div>';
+}
+function wireMedia(t){
+  idleEq();
+  const rb=document.getElementById("yt-replay");if(rb)rb.addEventListener("click",function(){Audio8.click();ytReplay();});
+  const fb=document.getElementById("yt-fallback");if(fb)fb.href=ytSearchUrl(t);
+  ytResume(t);
+}
+
+function qConsole(t){
+  const wrong=shuffle(OST_CONSOLES.filter(c=>c!==t.console)).slice(0,3);
+  return {badge:soundBadge(),tlabel:"— Étape 1 / 3 · La console —",
+    text:"Écoute ce thème. Sur quelle <b>console</b> est-il apparu pour la première fois&#8201;?",
+    media:mediaHTML(0), onMounted:function(){wireMedia(t);},
+    answers:shuffle([t.console,...wrong]),correct:t.console,
+    fbc:"Oui&#8201;! Ce thème est apparu pour la première fois sur "+t.console+".",
+    fbw:"Non — première apparition sur "+t.console+"."};
+}
+function qGame(t){
+  const wrong=shuffle(OST_GAMES.filter(g=>g!==t.game)).slice(0,3);
+  return {badge:soundBadge(),tlabel:"— Étape 2 / 3 · Le jeu —",
+    text:"Et dans quel <b>jeu</b> est-il apparu en premier&#8201;?",
+    media:mediaHTML(1), onMounted:function(){wireMedia(t);},
+    answers:shuffle([t.game,...wrong]),correct:t.game,
+    fbc:"Exact&#8201;! Première apparition dans « "+t.game+" » (sur "+t.console+").",
+    fbw:"Non — première apparition dans « "+t.game+" »."};
+}
+function qZone(t){
+  const wrong=shuffle(OST_ZONES.filter(z=>z!==t.zone)).slice(0,3);
+  return {badge:soundBadge(),tlabel:"— Étape 3 / 3 · La zone —",
+    text:"Enfin, à quel <b>lieu / quelle zone</b> ce thème est-il associé&#8201;?",
+    media:mediaHTML(2), onMounted:function(){wireMedia(t);},
+    answers:shuffle([t.zone,...wrong]),correct:t.zone,
+    fbc:"&#127881; Bravo&#8201;! C'était « "+t.name+" » — "+t.zone+" ("+t.region+" · "+t.game+" · "+t.console+").",
+    fbw:"C'était « "+t.name+" » — zone&#8201;: "+t.zone+" ("+t.region+")."};
 }
 
 const GAME={
   title:"Studio Sonore",
-  subtitle:"Quiz musical sur les bandes-son des jeux Pokémon — culture générale ET reconnaissance d'ambiance à l'oreille. Les extraits sont des chiptunes originaux composés pour ce jeu.",
-  eyebrow:"Quiz Musical",
-  ambiance:"route",
+  subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et remonte la piste&#8201;: Console &#8594; Jeu &#8594; Zone. Les extraits sont joués depuis YouTube.",
+  eyebrow:"Quiz Musical · à l'oreille",
+  hints:false,
   difficulties:["sprint","defi","marathon","infini"],
-  intro:'<div style="max-width:520px;margin:0 auto"><p class="sec-title" style="margin-bottom:.6rem">&#127911; Jukebox — écoute les thèmes originaux</p>'+
-        '<div class="jukebox" id="jukebox"></div></div>',
+  intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. Pour chaque morceau&#8201;: trouve la <b>console</b> de première apparition, puis le <b>jeu</b>, puis la <b>zone</b>. Le son vient de YouTube — pense à activer le volume.</p></div>',
   makeQuestion(st){
-    // ~35% ambiance, 65% trivia
-    return (Math.random()<.35)?qAmbiance():qTrivia();
+    if(!st._mq || st._mq.stage>2){ st._mq={track:rand(OST), stage:0}; }
+    const t=st._mq.track, stage=st._mq.stage; st._mq.stage++;
+    curTrack=t;
+    if(stage===0)return qConsole(t);
+    if(stage===1)return qGame(t);
+    return qZone(t);
   }
 };
 Quiz.mount(GAME);
-
-// wire jukebox (présent dans l'écran de départ après mount)
-(function jukebox(){
-  const box=document.getElementById("jukebox");if(!box)return;
-  const labels={distortion:"Monde Distorsion",route:"Route",battle:"Combat",town:"Village",legendary:"Légendaire"};
-  Audio8.songList().forEach(s=>{
-    const b=document.createElement("button");b.className="juke-btn";b.textContent="&#9654; "+(labels[s]||s);
-    b.innerHTML="&#9654; "+(labels[s]||s);
-    b.addEventListener("click",()=>{
-      document.querySelectorAll(".juke-btn").forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      Audio8.stopLoop();Audio8.playSong(s,false);
-    });
-    box.appendChild(b);
-  });
-})();
 </script>
 </body>
 </html>

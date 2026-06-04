@@ -70,8 +70,24 @@ lance un petit serveur local depuis `sources/` adapté, ou ouvre via un serveur 
 ## 🎮 Contenu
 
 5 jeux × 5 modes (Sprint 10 · Défi 20 · Marathon 50 · Infini ∞ · Survie 3 vies/12 s).
-Base de 41 Pokémon, table des 18 types, banque musicale, synthé chiptune (mélodies
-**originales**, pas les BO officielles), particules, score / séries / résultats.
+Base de 41 Pokémon, table des 18 types, particules, score / séries / résultats.
+
+## 🎧 Studio Sonore — quiz « vraie musique »
+
+Le mini-jeu musical fait écouter un **vrai thème des jeux Pokémon**, joué par le
+**lecteur YouTube officiel intégré** (titre masqué, à reconnaître à l'oreille). Rien
+n'est hébergé dans le dépôt : on ne fait que **référencer** les vidéos — donc **une
+connexion internet est requise** pour ce mini-jeu.
+
+Pour chaque morceau, on remonte la piste en entonnoir :
+
+1. **Console** de première apparition (Game Boy → Nintendo Switch) ;
+2. **Jeu** de première apparition ;
+3. **Zone / lieu** associé.
+
+> La base contient ~19 thèmes réels couvrant 6 consoles. Les identifiants de vidéos
+> vivent dans le tableau `OST` (2ᵉ `<script>` de `jeu-musique.html`) et sont faciles à
+> mettre à jour si une vidéo est un jour supprimée.
 
 ## 🏆 Records persistants
 
