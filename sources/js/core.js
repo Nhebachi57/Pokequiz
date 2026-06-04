@@ -300,7 +300,8 @@ const Quiz=(function(){
 
   function start(d){
     st={diff:d,total:d.n===0?Infinity:d.n,infinite:d.n===0,lives:d.lives||0,maxLives:d.lives||0,
-        timer:d.timer||0,score:0,streak:0,best:0,i:0,wrong:0,answered:false,hintUsed:false};
+        timer:d.timer||0,score:0,streak:0,best:0,i:0,wrong:0,answered:false,hintUsed:false,
+        pausesLeft:3,paused:false};
     if(G.ambiance)Audio8.playSong(G.ambiance,true);
     showS("q-game");
     render();
@@ -316,7 +317,7 @@ const Quiz=(function(){
 
   function render(){
     clearTimer();
-    st.answered=false;st.hintUsed=false;
+    st.answered=false;st.hintUsed=false;st.paused=false;
     const q=G.makeQuestion(st);
     st.current=q;
 
@@ -327,6 +328,7 @@ const Quiz=(function(){
     h+='<div class="chip">SCORE<span>'+st.score+'</span></div>';
     if(st.maxLives)h+='<div class="chip lives">VIES<span>'+("&#10084;".repeat(st.lives)||"—")+'</span></div>';
     if(st.timer)h+='<div class="chip timer">TEMPS<span id="q-time">'+st.timer+'</span></div>';
+    if(st.timer)h+='<button class="pause-btn" id="q-pause"'+(st.pausesLeft>0?'':' disabled')+'>&#10073;&#10073; Pause <span class="pcount">'+st.pausesLeft+'</span></button>';
     if(st.streak>=3)h+='<div class="streak-badge">&#128293; '+st.streak+' série&#8201;!</div>';
     info.innerHTML=h;
 
@@ -350,6 +352,7 @@ const Quiz=(function(){
     document.querySelectorAll("#q-answers .answer-btn").forEach(b=>b.addEventListener("click",()=>choose(b)));
     document.getElementById("q-next").addEventListener("click",next);
     if(G.hints&&q.hint){document.getElementById("q-hint").addEventListener("click",useHint);}
+    const pbn=document.getElementById("q-pause");if(pbn)pbn.addEventListener("click",togglePause);
     if(q.onMounted)q.onMounted(q,{resolve:resolveCustom});
     if(st.timer)startTimer();
   }
@@ -360,9 +363,11 @@ const Quiz=(function(){
     if(st.answered)return;st.answered=true;clearTimer();
     const fb=document.getElementById("q-feedback");
     if(ok){
-      st.score++;st.streak++;st.best=Math.max(st.best,st.streak);
+      st.score++;
+      let earned=false;if(st.timer&&st.score%8===0){st.pausesLeft++;earned=true;}
+      st.streak++;st.best=Math.max(st.best,st.streak);
       fb.className="feedback correct";
-      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+'</span>';
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+(earned?'<br><span class="earn">&#9208; +1 pause gagnée&#8201;!</span>':'')+'</span>';
       Audio8.jingleGood();
     }else{
       st.streak=0;st.wrong++;if(st.maxLives)st.lives--;
@@ -374,14 +379,34 @@ const Quiz=(function(){
   }
 
   function startTimer(){
-    let t=st.timer;const el=document.getElementById("q-time");
-    const pg=document.getElementById("q-progress");pg.className="progress-fill timer";pg.style.width="100%";
+    st._t=st.timer;st._tmax=st.timer;
+    const pg=document.getElementById("q-progress");if(pg){pg.className="progress-fill timer";pg.style.width="100%";}
+    runTimer();
+  }
+  function runTimer(){
+    const el=document.getElementById("q-time");
     timerInt=setInterval(()=>{
-      t--;if(el)el.textContent=t;pg.style.width=(t/st.timer*100)+"%";
-      if(t<=0){clearTimer();timeout();}
+      st._t--;if(el)el.textContent=st._t;const pg=document.getElementById("q-progress");if(pg)pg.style.width=(st._t/st._tmax*100)+"%";
+      if(st._t<=0){clearTimer();timeout();}
     },1000);
   }
   function clearTimer(){if(timerInt){clearInterval(timerInt);timerInt=null;}}
+
+  /* PAUSE — fige le minuteur de la question en cours (3 d'avance, +1 toutes les 8 bonnes réponses) */
+  function togglePause(){if(st.paused)resumeQ();else pauseQ();}
+  function pauseQ(){
+    if(!st.timer||st.answered||st.paused||st.pausesLeft<=0)return;
+    st.paused=true;st.pausesLeft--;clearTimer();Audio8.click();updatePauseBtn();
+  }
+  function resumeQ(){
+    if(!st.paused)return;st.paused=false;Audio8.click();updatePauseBtn();runTimer();
+  }
+  function updatePauseBtn(){
+    const pb=document.getElementById("q-pause");if(!pb)return;
+    if(st.answered){pb.disabled=true;return;}
+    if(st.paused){pb.innerHTML="&#9654; Reprendre";pb.classList.add("paused");pb.disabled=false;}
+    else{pb.innerHTML='&#10073;&#10073; Pause <span class="pcount">'+st.pausesLeft+'</span>';pb.classList.remove("paused");pb.disabled=(st.pausesLeft<=0);}
+  }
 
   function useHint(){
     if(st.answered||st.hintUsed)return;st.hintUsed=true;
@@ -413,10 +438,11 @@ const Quiz=(function(){
     const fb=document.getElementById("q-feedback");
     if(ok){
       btn.classList.add("correct");
-      if(!st.hintUsed)st.score++;else st.score++; // l'indice n'enlève pas le point, juste la "perfection"
+      st.score++;
+      let earned=false;if(st.timer&&st.score%8===0){st.pausesLeft++;earned=true;}
       st.streak++;st.best=Math.max(st.best,st.streak);
       fb.className="feedback correct";
-      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!'+(st.hintUsed?" (avec indice)":"")+'</span><span class="ft">'+q.fbc+'</span>';
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!'+(st.hintUsed?" (avec indice)":"")+'</span><span class="ft">'+q.fbc+(earned?'<br><span class="earn">&#9208; +1 pause gagnée&#8201;!</span>':'')+'</span>';
       Audio8.jingleGood();spawnSparkles(btn);
       const sp=document.querySelector("#q-area .q-sprite");if(sp){sp.classList.remove("silhouette");sp.classList.add("reveal");}
     }else{
@@ -432,6 +458,7 @@ const Quiz=(function(){
   function finishTurn(){
     document.getElementById("q-info").querySelector(".chip span").innerHTML=st.infinite?("&#8734; "+(st.i+1)):((st.i+1)+"/"+st.total);
     const lv=document.querySelector("#q-info .lives span");if(lv)lv.innerHTML="&#10084;".repeat(st.lives)||"—";
+    const pb=document.getElementById("q-pause");if(pb)pb.disabled=true;
     const nb=document.getElementById("q-next");
     if(st.maxLives&&st.lives<=0){nb.textContent="Game Over → résultats →";}
     else nb.textContent=(!st.infinite&&st.i+1>=st.total)?"Voir les résultats →":"Question suivante →";

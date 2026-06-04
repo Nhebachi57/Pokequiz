@@ -96,6 +96,12 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .chip span{display:block;font-size:1.05rem;color:var(--gira-gold);margin-top:2px}
 .chip.lives span{color:#ff7a7a}
 .chip.timer span{color:var(--gira-teal-bright)}
+.pause-btn{background:var(--shadow-deep);border:1px solid var(--gira-purple);color:var(--gira-gold);padding:.4rem .7rem;border-radius:4px;cursor:pointer;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.08em;transition:all .2s;align-self:center}
+.pause-btn:hover:not(:disabled){border-color:var(--gira-gold);box-shadow:0 0 12px rgba(200,168,75,.25)}
+.pause-btn:disabled{opacity:.35;cursor:default}
+.pause-btn.paused{border-color:var(--gira-teal);color:var(--gira-teal-bright);box-shadow:0 0 12px rgba(42,168,196,.3)}
+.pause-btn .pcount{display:inline-block;margin-left:.2rem;padding:0 .35rem;border-radius:10px;background:rgba(200,168,75,.18);color:var(--gira-gold-bright)}
+.feedback .earn{display:inline-block;margin-top:.4rem;color:var(--gira-gold-bright);font-family:'Cinzel Decorative',serif;font-size:.62rem;letter-spacing:.06em}
 .streak-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .6rem;border-radius:20px;background:rgba(200,168,75,.1);border:.5px solid rgba(200,168,75,.3);font-family:'Cinzel Decorative',serif;font-size:.55rem;color:var(--gira-gold);letter-spacing:.08em}
 .progress-wrap{width:100%;height:3px;background:var(--shadow-light);border-radius:2px;margin-bottom:1.4rem;overflow:hidden}
 .progress-fill{height:100%;background:linear-gradient(90deg,var(--gira-purple),var(--gira-teal));border-radius:2px;transition:width .4s cubic-bezier(.4,0,.2,1)}
@@ -520,7 +526,8 @@ const Quiz=(function(){
 
   function start(d){
     st={diff:d,total:d.n===0?Infinity:d.n,infinite:d.n===0,lives:d.lives||0,maxLives:d.lives||0,
-        timer:d.timer||0,score:0,streak:0,best:0,i:0,wrong:0,answered:false,hintUsed:false};
+        timer:d.timer||0,score:0,streak:0,best:0,i:0,wrong:0,answered:false,hintUsed:false,
+        pausesLeft:3,paused:false};
     if(G.ambiance)Audio8.playSong(G.ambiance,true);
     showS("q-game");
     render();
@@ -536,7 +543,7 @@ const Quiz=(function(){
 
   function render(){
     clearTimer();
-    st.answered=false;st.hintUsed=false;
+    st.answered=false;st.hintUsed=false;st.paused=false;
     const q=G.makeQuestion(st);
     st.current=q;
 
@@ -547,6 +554,7 @@ const Quiz=(function(){
     h+='<div class="chip">SCORE<span>'+st.score+'</span></div>';
     if(st.maxLives)h+='<div class="chip lives">VIES<span>'+("&#10084;".repeat(st.lives)||"—")+'</span></div>';
     if(st.timer)h+='<div class="chip timer">TEMPS<span id="q-time">'+st.timer+'</span></div>';
+    if(st.timer)h+='<button class="pause-btn" id="q-pause"'+(st.pausesLeft>0?'':' disabled')+'>&#10073;&#10073; Pause <span class="pcount">'+st.pausesLeft+'</span></button>';
     if(st.streak>=3)h+='<div class="streak-badge">&#128293; '+st.streak+' série&#8201;!</div>';
     info.innerHTML=h;
 
@@ -570,6 +578,7 @@ const Quiz=(function(){
     document.querySelectorAll("#q-answers .answer-btn").forEach(b=>b.addEventListener("click",()=>choose(b)));
     document.getElementById("q-next").addEventListener("click",next);
     if(G.hints&&q.hint){document.getElementById("q-hint").addEventListener("click",useHint);}
+    const pbn=document.getElementById("q-pause");if(pbn)pbn.addEventListener("click",togglePause);
     if(q.onMounted)q.onMounted(q,{resolve:resolveCustom});
     if(st.timer)startTimer();
   }
@@ -580,9 +589,11 @@ const Quiz=(function(){
     if(st.answered)return;st.answered=true;clearTimer();
     const fb=document.getElementById("q-feedback");
     if(ok){
-      st.score++;st.streak++;st.best=Math.max(st.best,st.streak);
+      st.score++;
+      let earned=false;if(st.timer&&st.score%8===0){st.pausesLeft++;earned=true;}
+      st.streak++;st.best=Math.max(st.best,st.streak);
       fb.className="feedback correct";
-      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+'</span>';
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!</span><span class="ft">'+(fbHTML||st.current.fbc||"")+(earned?'<br><span class="earn">&#9208; +1 pause gagnée&#8201;!</span>':'')+'</span>';
       Audio8.jingleGood();
     }else{
       st.streak=0;st.wrong++;if(st.maxLives)st.lives--;
@@ -594,14 +605,34 @@ const Quiz=(function(){
   }
 
   function startTimer(){
-    let t=st.timer;const el=document.getElementById("q-time");
-    const pg=document.getElementById("q-progress");pg.className="progress-fill timer";pg.style.width="100%";
+    st._t=st.timer;st._tmax=st.timer;
+    const pg=document.getElementById("q-progress");if(pg){pg.className="progress-fill timer";pg.style.width="100%";}
+    runTimer();
+  }
+  function runTimer(){
+    const el=document.getElementById("q-time");
     timerInt=setInterval(()=>{
-      t--;if(el)el.textContent=t;pg.style.width=(t/st.timer*100)+"%";
-      if(t<=0){clearTimer();timeout();}
+      st._t--;if(el)el.textContent=st._t;const pg=document.getElementById("q-progress");if(pg)pg.style.width=(st._t/st._tmax*100)+"%";
+      if(st._t<=0){clearTimer();timeout();}
     },1000);
   }
   function clearTimer(){if(timerInt){clearInterval(timerInt);timerInt=null;}}
+
+  /* PAUSE — fige le minuteur de la question en cours (3 d'avance, +1 toutes les 8 bonnes réponses) */
+  function togglePause(){if(st.paused)resumeQ();else pauseQ();}
+  function pauseQ(){
+    if(!st.timer||st.answered||st.paused||st.pausesLeft<=0)return;
+    st.paused=true;st.pausesLeft--;clearTimer();Audio8.click();updatePauseBtn();
+  }
+  function resumeQ(){
+    if(!st.paused)return;st.paused=false;Audio8.click();updatePauseBtn();runTimer();
+  }
+  function updatePauseBtn(){
+    const pb=document.getElementById("q-pause");if(!pb)return;
+    if(st.answered){pb.disabled=true;return;}
+    if(st.paused){pb.innerHTML="&#9654; Reprendre";pb.classList.add("paused");pb.disabled=false;}
+    else{pb.innerHTML='&#10073;&#10073; Pause <span class="pcount">'+st.pausesLeft+'</span>';pb.classList.remove("paused");pb.disabled=(st.pausesLeft<=0);}
+  }
 
   function useHint(){
     if(st.answered||st.hintUsed)return;st.hintUsed=true;
@@ -633,10 +664,11 @@ const Quiz=(function(){
     const fb=document.getElementById("q-feedback");
     if(ok){
       btn.classList.add("correct");
-      if(!st.hintUsed)st.score++;else st.score++; // l'indice n'enlève pas le point, juste la "perfection"
+      st.score++;
+      let earned=false;if(st.timer&&st.score%8===0){st.pausesLeft++;earned=true;}
       st.streak++;st.best=Math.max(st.best,st.streak);
       fb.className="feedback correct";
-      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!'+(st.hintUsed?" (avec indice)":"")+'</span><span class="ft">'+q.fbc+'</span>';
+      fb.innerHTML='<span class="fl">&#10022; Correct&#8201;!'+(st.hintUsed?" (avec indice)":"")+'</span><span class="ft">'+q.fbc+(earned?'<br><span class="earn">&#9208; +1 pause gagnée&#8201;!</span>':'')+'</span>';
       Audio8.jingleGood();spawnSparkles(btn);
       const sp=document.querySelector("#q-area .q-sprite");if(sp){sp.classList.remove("silhouette");sp.classList.add("reveal");}
     }else{
@@ -652,6 +684,7 @@ const Quiz=(function(){
   function finishTurn(){
     document.getElementById("q-info").querySelector(".chip span").innerHTML=st.infinite?("&#8734; "+(st.i+1)):((st.i+1)+"/"+st.total);
     const lv=document.querySelector("#q-info .lives span");if(lv)lv.innerHTML="&#10084;".repeat(st.lives)||"—";
+    const pb=document.getElementById("q-pause");if(pb)pb.disabled=true;
     const nb=document.getElementById("q-next");
     if(st.maxLives&&st.lives<=0){nb.textContent="Game Over → résultats →";}
     else nb.textContent=(!st.infinite&&st.i+1>=st.total)?"Voir les résultats →":"Question suivante →";
@@ -715,13 +748,13 @@ function typeBadge(label){return '<div class="q-badge" style="background:rgba(20
 </script>
 <script>
 /* ============================================================
-   STUDIO SONORE — Quiz « vraie musique » (YouTube), 3 écrans
-   On écoute un vrai thème (titre masqué) et on remonte la piste en
-   3 temps, sur 3 écrans : 1) Console → 2) Jeu → 3) Zone.
-   - les JEUX proposés privilégient ceux de la console validée ;
-   - les ZONES proposées sont d'autres lieux du même JEU ;
-   - le temps par question DIMINUE à mesure que la série grandit ;
-   - sac mélangé : on ne retombe pas régulièrement sur le même morceau.
+   STUDIO SONORE — Quiz « vraie musique » (YouTube), tunnel adaptatif
+   On écoute un vrai thème (titre masqué) et on remonte la piste :
+   1) Console  →  2) Jeu (UNIQUEMENT si la console a plusieurs jeux ;
+      sinon cette étape est sautée)  →  3) Zone / lieu.
+   - étape Jeu : on propose les jeux de la console validée (2 sur DS/3DS) ;
+   - étape Zone : 4 lieux du MÊME jeu ;
+   - le temps par question diminue avec la série ; sac mélangé anti-répétition.
    Audio = lecteur YouTube officiel intégré (rien n'est hébergé ici).
    ============================================================ */
 
@@ -833,32 +866,28 @@ const OST_CONSOLES=[...new Set(OST.map(t=>t.console))];
 const OST_GAMES=[...new Set(OST.map(t=>t.game))];
 const OST_ZONES=[...new Set(OST.map(t=>t.zone))];
 const CONSOLE_OF={}; OST.forEach(t=>{CONSOLE_OF[t.game]=t.console;});
+const gamesOfConsole=c=>OST_GAMES.filter(g=>CONSOLE_OF[g]===c);
 const pick=(arr,n)=>shuffle(arr).slice(0,n);
-function fill(correct,wrong,pool){ // complète jusqu'à 3 distracteurs distincts
-  if(wrong.length<3){const more=shuffle(pool.filter(x=>x!==correct&&wrong.indexOf(x)<0));wrong=wrong.concat(more.slice(0,3-wrong.length));}
-  return shuffle([correct,...wrong.slice(0,3)]);
-}
+function fill(correct,wrong,pool){if(wrong.length<3){const more=shuffle(pool.filter(x=>x!==correct&&wrong.indexOf(x)<0));wrong=wrong.concat(more.slice(0,3-wrong.length));}return shuffle([correct,...wrong.slice(0,3)]);}
 
-/* options par étape (entonnoir) */
+/* options par étape */
 function consoleOptions(t){return fill(t.console, pick(OST_CONSOLES.filter(c=>c!==t.console),3), OST_CONSOLES);}
-function gameOptions(t){ // privilégie les jeux de la MÊME console
-  const same=OST_GAMES.filter(g=>g!==t.game && CONSOLE_OF[g]===t.console);
-  return fill(t.game, pick(same,3), OST_GAMES);
-}
-function zoneOptions(t){ // autres lieux du MÊME jeu
+function gameOptions(t){return shuffle(gamesOfConsole(t.console));} /* uniquement les jeux de la console (2 sur DS/3DS) */
+function zoneOptions(t){
   const same=[...new Set(OST.filter(x=>x.game===t.game && x.zone!==t.zone).map(x=>x.zone))];
   return fill(t.zone, pick(same,3), OST_ZONES);
 }
 
-/* ---- UI : lecteur + volume + entonnoir ---- */
-function funnelHTML(stage){
-  const steps=["1. Console","2. Jeu","3. Zone"];
-  return '<div class="funnel">'+steps.map(function(s,i){
-    const cls=i<stage?"fstep done":(i===stage?"fstep on":"fstep");
-    return '<span class="'+cls+'">'+s+'</span>'+(i<2?'<span class="farrow">&#8594;</span>':'');
+/* ---- UI : lecteur + volume + entonnoir (adaptatif) ---- */
+function funnelHTML(steps,activeKey){
+  const labels={console:"Console",game:"Jeu",zone:"Zone"};
+  const ai=steps.indexOf(activeKey);
+  return '<div class="funnel">'+steps.map(function(k,i){
+    const cls=i<ai?"fstep done":(i===ai?"fstep on":"fstep");
+    return '<span class="'+cls+'">'+(i+1)+'. '+labels[k]+'</span>'+(i<steps.length-1?'<span class="farrow">&#8594;</span>':'');
   }).join("")+'</div>';
 }
-function mediaHTML(t,stage){
+function mediaHTML(t,steps,activeKey){
   const v=getVol();
   return '<div class="music-stage">'+
     '<div class="equalizer">'+eqBarsHTML()+'</div>'+
@@ -868,7 +897,7 @@ function mediaHTML(t,stage){
       '<span class="vol-val" id="vol-val">'+v+'</span></div>'+
     '<p class="yt-note">&#127911; Titre masqué &mdash; à reconnaître à l\'oreille.</p>'+
     '<a class="yt-fallback" id="yt-fallback" style="display:none" target="_blank" rel="noopener" href="#">&#9654; Écouter sur YouTube</a>'+
-    funnelHTML(stage)+
+    funnelHTML(steps,activeKey)+
   '</div>';
 }
 function wireVolume(){
@@ -881,28 +910,29 @@ function wirePlayer(t){curTrack=t;idleEq();ytResume(t);
   const fbk=document.getElementById("yt-fallback");if(fbk)fbk.href=ytSearchUrl(t);
   wireVolume();
 }
+function stepLabel(steps,key,name){const n=steps.length,k=steps.indexOf(key)+1;return "— Étape "+k+" / "+n+" · "+name+" —";}
 
-/* ---- les 3 questions (1 morceau, 3 écrans) ---- */
-function qConsole(t){
-  return {badge:soundBadge(),tlabel:"— Étape 1 / 3 · La console —",
+/* ---- les questions (1 morceau, 2 ou 3 écrans) ---- */
+function qConsole(t,steps){
+  return {badge:soundBadge(),tlabel:stepLabel(steps,"console","La console"),
     text:"Écoute ce thème (titre masqué). Sur quelle <b>console</b> est-il apparu pour la première fois&#8201;?",
-    media:mediaHTML(t,0),onMounted:function(q){wirePlayer(t);},
+    media:mediaHTML(t,steps,"console"),onMounted:function(q){wirePlayer(t);},
     answers:consoleOptions(t),correct:t.console,
     fbc:"Oui&#8201;! Ce thème est apparu pour la première fois sur "+t.console+".",
     fbw:"Non — première apparition sur "+t.console+"."};
 }
-function qGame(t){
-  return {badge:soundBadge(),tlabel:"— Étape 2 / 3 · Le jeu —",
-    text:"Bien&#8201;! Et dans quel <b>jeu</b> ("+escapeHtml(t.console)+") est-il apparu en premier&#8201;?",
-    media:mediaHTML(t,1),onMounted:function(q){wirePlayer(t);},
+function qGame(t,steps){
+  return {badge:soundBadge(),tlabel:stepLabel(steps,"game","Le jeu"),
+    text:"Bien&#8201;! Sur "+escapeHtml(t.console)+", dans quel <b>jeu</b> est-il apparu en premier&#8201;?",
+    media:mediaHTML(t,steps,"game"),onMounted:function(q){wirePlayer(t);},
     answers:gameOptions(t),correct:t.game,
     fbc:"Exact&#8201;! Première apparition dans « "+t.game+" ».",
     fbw:"Non — première apparition dans « "+t.game+" »."};
 }
-function qZone(t){
-  return {badge:soundBadge(),tlabel:"— Étape 3 / 3 · La zone —",
+function qZone(t,steps){
+  return {badge:soundBadge(),tlabel:stepLabel(steps,"zone","La zone"),
     text:"Enfin, à quel <b>lieu / quelle zone</b> de « "+escapeHtml(t.game)+" » ce thème est-il associé&#8201;?",
-    media:mediaHTML(t,2),onMounted:function(q){wirePlayer(t);},
+    media:mediaHTML(t,steps,"zone"),onMounted:function(q){wirePlayer(t);},
     answers:zoneOptions(t),correct:t.zone,
     fbc:"&#127881; Bravo&#8201;! C'était « "+t.name+" » — "+t.zone+" ("+t.region+").",
     fbw:"C'était « "+t.name+" » — zone&#8201;: "+t.zone+" ("+t.region+")."};
@@ -910,28 +940,30 @@ function qZone(t){
 
 const GAME={
   title:"Studio Sonore",
-  subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et remonte la piste en 3 temps&#8201;: Console &#8594; Jeu &#8594; Zone. Audio joué depuis YouTube.",
+  subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et remonte la piste&#8201;: Console &#8594; (Jeu) &#8594; Zone. Audio joué depuis YouTube.",
   eyebrow:"Quiz Musical · à l'oreille",
   hints:false,
   difficulties:["sprint","defi","marathon","infini"],
-  intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. Chaque morceau se joue en 3 temps&#8201;: <b>Console</b> &#8594; <b>Jeu</b> &#8594; <b>Zone</b>. &#9201; Le temps par question <b>diminue</b> à mesure que ta série grandit. Le son vient de YouTube — pense à régler le volume.</p></div>',
+  intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. On remonte la piste&#8201;: <b>Console</b> &#8594; <b>Jeu</b> (sauté si la console n\'a qu\'un jeu) &#8594; <b>Zone</b>. &#9201; Le temps diminue avec la série ; &#10073;&#10073; 3 pauses (+1 toutes les 8 bonnes réponses). Son via YouTube — règle le volume.</p></div>',
   makeQuestion(st){
-    /* sac mélangé : on épuise les 42 morceaux avant d'en revoir un (pas de répétition régulière) */
-    if(!st._mq || st._mq.stage>2){
+    /* sac mélangé : on épuise les 42 morceaux avant d'en revoir un */
+    if(!st._mq || st._mq.k>=st._mq.steps.length){
       if(!st._bag || !st._bag.length){
         st._bag=shuffle(OST.map((_,i)=>i));
         if(st._lastIdx!=null && st._bag.length>1 && st._bag[0]===st._lastIdx){st._bag.push(st._bag.shift());}
       }
       const idx=st._bag.shift(); st._lastIdx=idx;
-      st._mq={track:OST[idx],stage:0};
+      const t=OST[idx];
+      /* étape Jeu seulement si la console a >= 2 jeux (DS, 3DS) ; sinon on saute */
+      const steps=(gamesOfConsole(t.console).length>=2)?["console","game","zone"]:["console","zone"];
+      st._mq={track:t,steps:steps,k:0};
     }
-    const t=st._mq.track, stage=st._mq.stage; st._mq.stage++;
+    const t=st._mq.track, steps=st._mq.steps, key=steps[st._mq.k]; st._mq.k++;
     curTrack=t;
-    /* limite de temps décroissant avec la série (toutes difficultés) */
-    st.timer=Math.max(8, 25-(st.streak||0));
-    if(stage===0)return qConsole(t);
-    if(stage===1)return qGame(t);
-    return qZone(t);
+    st.timer=Math.max(8, 25-(st.streak||0)); /* limite de temps décroissant avec la série */
+    if(key==="console")return qConsole(t,steps);
+    if(key==="game")return qGame(t,steps);
+    return qZone(t,steps);
   }
 };
 Quiz.mount(GAME);
