@@ -67,6 +67,12 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .badge-new{background:rgba(200,168,75,.2);color:var(--gira-gold);border:.5px solid var(--gira-gold)}
 .badge-hard{background:rgba(139,26,58,.3);color:#ff8080;border:.5px solid var(--gira-crimson)}
 .badge-music{background:rgba(42,168,196,.2);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.badge-soon{background:rgba(96,72,128,.35);color:var(--text-secondary);border:.5px solid var(--text-muted)}
+.badge-dev{background:rgba(42,168,196,.18);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.menu-btn.locked{opacity:.45;cursor:not-allowed;filter:grayscale(.55)}
+.menu-btn.locked:hover{transform:none;border-color:var(--gira-purple);box-shadow:none}
+.menu-btn.locked:hover::before{opacity:0}.menu-btn.locked::after{display:none}
+.menu-btn.locked .bn{color:var(--text-secondary)}
 .menu-rec{display:block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.05em;color:var(--gira-gold);opacity:.85;position:relative;z-index:1}
 .menu-reset{margin-top:1.4rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.12em;color:var(--text-muted);background:none;border:none;cursor:pointer;text-transform:uppercase;transition:color .25s}
 .menu-reset:hover{color:#ff8080}
@@ -476,6 +482,17 @@ function spawnSparkles(el){
    Identifie le jeu par le nom de fichier de la page (jeu-silhouette…).
    ============================================================ */
 const GAMEKEY=(function(){try{return ((location.pathname.split("/").pop()||"index").replace(/\.html?$/i,""))||"index";}catch(e){return "index";}})();
+
+/* ============================================================
+   MODE DEV + VERROUS — modes « À venir », masqués aux visiteurs.
+   Accès dev : ouvrir n'importe quelle page avec ?dev=1 (mémorisé) ;
+   ?dev=0 pour repasser en mode visiteur.
+   ============================================================ */
+const DEVMODE=(function(){try{const p=new URLSearchParams(location.search);if(p.has("dev")){if(p.get("dev")==="0")localStorage.removeItem("pokequiz_dev");else localStorage.setItem("pokequiz_dev","1");}return localStorage.getItem("pokequiz_dev")==="1";}catch(e){return false;}})();
+const LOCKED_GAMES=["jeu-silhouette","jeu-types","jeu-capacites","jeu-pokedex"];
+/* garde : un mode verrouillé est inaccessible aux visiteurs (sauf mode dev) */
+if(!DEVMODE && LOCKED_GAMES.indexOf(GAMEKEY)>=0){try{location.replace("index.html?soon="+GAMEKEY);}catch(e){}}
+
 const Records=(function(){
   const KEY="pokequiz_records_v1";
   function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}
@@ -810,17 +827,30 @@ function typeBadge(label){return '<div class="q-badge" style="background:rgba(20
 <script>
 /* annotation des records sur les tuiles du menu + reset */
 (function menuRecords(){
+  var locked=(typeof LOCKED_GAMES!=="undefined")?LOCKED_GAMES:["jeu-silhouette","jeu-types","jeu-capacites","jeu-pokedex"];
+  var dev=(typeof DEVMODE!=="undefined")&&DEVMODE;
   document.querySelectorAll(".menu-grid .menu-btn").forEach(function(a){
-    var href=a.getAttribute("href")||"";var key=href.replace(/.html?$/i,"");
+    var href=a.getAttribute("href")||"";var key=href.replace(/\.html?$/i,"");
     var p=Records.bestPct(key);
     if(p!==null){var s=document.createElement("span");s.className="menu-rec";s.innerHTML="&#9670; Meilleure pr&eacute;cision&#8201;: "+p+"%";a.appendChild(s);}
+    if(locked.indexOf(key)>=0){
+      a.querySelectorAll(".badge").forEach(function(b){b.remove();}); /* retire SILHOUETTE / DIFFICILE… */
+      if(!dev){
+        a.classList.add("locked");a.setAttribute("aria-disabled","true");a.removeAttribute("href");
+        a.addEventListener("click",function(e){e.preventDefault();});
+        var sb=document.createElement("span");sb.className="badge badge-soon";sb.textContent="À venir";a.appendChild(sb);
+      }else{
+        var db=document.createElement("span");db.className="badge badge-dev";db.textContent="DEV";a.appendChild(db);
+      }
+    }
   });
   var grid=document.querySelector(".menu-grid");
   if(grid&&!document.getElementById("menu-reset")){
-    var raw=Records.load();if(!Object.keys(raw).length)return;
-    var b=document.createElement("button");b.id="menu-reset";b.className="menu-reset";b.innerHTML="&#9851; R&eacute;initialiser les records";
-    b.addEventListener("click",function(){if(confirm("Effacer tous tes records enregistrés ?")){Records.clearAll();location.reload();}});
-    grid.parentNode.appendChild(b);
+    var raw=Records.load();if(Object.keys(raw).length){
+      var b=document.createElement("button");b.id="menu-reset";b.className="menu-reset";b.innerHTML="&#9851; R&eacute;initialiser les records";
+      b.addEventListener("click",function(){if(confirm("Effacer tous tes records enregistrés ?")){Records.clearAll();location.reload();}});
+      grid.parentNode.appendChild(b);
+    }
   }
 })();
 </script>

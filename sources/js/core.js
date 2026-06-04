@@ -192,6 +192,17 @@ function spawnSparkles(el){
    Identifie le jeu par le nom de fichier de la page (jeu-silhouette…).
    ============================================================ */
 const GAMEKEY=(function(){try{return ((location.pathname.split("/").pop()||"index").replace(/\.html?$/i,""))||"index";}catch(e){return "index";}})();
+
+/* ============================================================
+   MODE DEV + VERROUS — modes « À venir », masqués aux visiteurs.
+   Accès dev : ouvrir n'importe quelle page avec ?dev=1 (mémorisé) ;
+   ?dev=0 pour repasser en mode visiteur.
+   ============================================================ */
+const DEVMODE=(function(){try{const p=new URLSearchParams(location.search);if(p.has("dev")){if(p.get("dev")==="0")localStorage.removeItem("pokequiz_dev");else localStorage.setItem("pokequiz_dev","1");}return localStorage.getItem("pokequiz_dev")==="1";}catch(e){return false;}})();
+const LOCKED_GAMES=["jeu-silhouette","jeu-types","jeu-capacites","jeu-pokedex"];
+/* garde : un mode verrouillé est inaccessible aux visiteurs (sauf mode dev) */
+if(!DEVMODE && LOCKED_GAMES.indexOf(GAMEKEY)>=0){try{location.replace("index.html?soon="+GAMEKEY);}catch(e){}}
+
 const Records=(function(){
   const KEY="pokequiz_records_v1";
   function load(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}

@@ -60,6 +60,12 @@ a{color:var(--gira-teal-bright);text-decoration:none}
 .badge-new{background:rgba(200,168,75,.2);color:var(--gira-gold);border:.5px solid var(--gira-gold)}
 .badge-hard{background:rgba(139,26,58,.3);color:#ff8080;border:.5px solid var(--gira-crimson)}
 .badge-music{background:rgba(42,168,196,.2);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.badge-soon{background:rgba(96,72,128,.35);color:var(--text-secondary);border:.5px solid var(--text-muted)}
+.badge-dev{background:rgba(42,168,196,.18);color:var(--gira-teal-bright);border:.5px solid var(--gira-teal)}
+.menu-btn.locked{opacity:.45;cursor:not-allowed;filter:grayscale(.55)}
+.menu-btn.locked:hover{transform:none;border-color:var(--gira-purple);box-shadow:none}
+.menu-btn.locked:hover::before{opacity:0}.menu-btn.locked::after{display:none}
+.menu-btn.locked .bn{color:var(--text-secondary)}
 .menu-rec{display:block;margin-top:.5rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.05em;color:var(--gira-gold);opacity:.85;position:relative;z-index:1}
 .menu-reset{margin-top:1.4rem;font-family:'Cinzel Decorative',serif;font-size:.55rem;letter-spacing:.12em;color:var(--text-muted);background:none;border:none;cursor:pointer;text-transform:uppercase;transition:color .25s}
 .menu-reset:hover{color:#ff8080}
