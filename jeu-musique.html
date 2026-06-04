@@ -623,9 +623,11 @@ const Quiz=(function(){
   function pauseQ(){
     if(!st.timer||st.answered||st.paused||st.pausesLeft<=0)return;
     st.paused=true;st.pausesLeft--;clearTimer();Audio8.click();updatePauseBtn();
+    if(G.onPause){try{G.onPause();}catch(e){}}
   }
   function resumeQ(){
     if(!st.paused)return;st.paused=false;Audio8.click();updatePauseBtn();runTimer();
+    if(G.onResume){try{G.onResume();}catch(e){}}
   }
   function updatePauseBtn(){
     const pb=document.getElementById("q-pause");if(!pb)return;
@@ -943,6 +945,9 @@ const GAME={
   subtitle:"Écoute un vrai thème des jeux Pokémon (titre masqué) et remonte la piste&#8201;: Console &#8594; (Jeu) &#8594; Zone. Audio joué depuis YouTube.",
   eyebrow:"Quiz Musical · à l'oreille",
   hints:false,
+  /* la pause du moteur met aussi la MUSIQUE en pause (lecteur YouTube) */
+  onPause:function(){try{if(ytPlayer&&ytPlayer.pauseVideo)ytPlayer.pauseVideo();}catch(e){}if(ytStopT){clearTimeout(ytStopT);ytStopT=null;}idleEq();},
+  onResume:function(){try{if(ytPlayer&&ytPlayer.playVideo)ytPlayer.playVideo();}catch(e){}if(ytStopT)clearTimeout(ytStopT);ytStopT=setTimeout(function(){try{ytPlayer.pauseVideo();}catch(e){}},25000);pulseEq(25000);},
   difficulties:["sprint","defi","marathon","infini"],
   intro:'<div style="max-width:560px;margin:0 auto 1rem"><p class="sec-sub">&#127911; '+OST.length+' thèmes réels &middot; 6 consoles. On remonte la piste&#8201;: <b>Console</b> &#8594; <b>Jeu</b> (sauté si la console n\'a qu\'un jeu) &#8594; <b>Zone</b>. &#9201; Le temps diminue avec la série ; &#10073;&#10073; 3 pauses (+1 toutes les 8 bonnes réponses). Son via YouTube — règle le volume.</p></div>',
   makeQuestion(st){

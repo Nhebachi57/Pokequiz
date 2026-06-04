@@ -681,9 +681,11 @@ const Quiz=(function(){
   function pauseQ(){
     if(!st.timer||st.answered||st.paused||st.pausesLeft<=0)return;
     st.paused=true;st.pausesLeft--;clearTimer();Audio8.click();updatePauseBtn();
+    if(G.onPause){try{G.onPause();}catch(e){}}
   }
   function resumeQ(){
     if(!st.paused)return;st.paused=false;Audio8.click();updatePauseBtn();runTimer();
+    if(G.onResume){try{G.onResume();}catch(e){}}
   }
   function updatePauseBtn(){
     const pb=document.getElementById("q-pause");if(!pb)return;
