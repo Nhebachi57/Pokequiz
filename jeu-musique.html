@@ -893,12 +893,31 @@ const gamesOfConsole=c=>OST_GAMES.filter(g=>CONSOLE_OF[g]===c);
 const pick=(arr,n)=>shuffle(arr).slice(0,n);
 function fill(correct,wrong,pool){if(wrong.length<3){const more=shuffle(pool.filter(x=>x!==correct&&wrong.indexOf(x)<0));wrong=wrong.concat(more.slice(0,3-wrong.length));}return shuffle([correct,...wrong.slice(0,3)]);}
 
+/* catégorie d'un morceau (pour ne proposer que des zones de même nature) :
+   combat / ville / lieu — dérivée du nom et de la zone (pas de champ à maintenir). */
+const VILLES=new Set(["Bourg Palette","Bourg de Lavanville","Céladopole","Bourg Geon","Doublonville","Rosalia","Bourg en Vol","Bonaugure","Arabelle","Illumis"]);
+function catOf(t){return /^Combat/.test(t.name)?"combat":(VILLES.has(t.zone)?"ville":"lieu");}
+
 /* options par étape */
 function consoleOptions(t){return fill(t.console, pick(OST_CONSOLES.filter(c=>c!==t.console),3), OST_CONSOLES);}
 function gameOptions(t){return shuffle(gamesOfConsole(t.console));} /* uniquement les jeux de la console (2 sur DS/3DS) */
 function zoneOptions(t){
-  const same=[...new Set(OST.filter(x=>x.game===t.game && x.zone!==t.zone).map(x=>x.zone))];
-  return fill(t.zone, pick(same,3), OST_ZONES);
+  /* distracteurs = MÊME catégorie (combat/ville/lieu) ET MÊME jeu en priorité ;
+     on garde toujours le jeu correspondant, puis on complète selon dispo. */
+  const cat=catOf(t);
+  const sameGame=OST.filter(x=>x.game===t.game && x.zone!==t.zone);
+  const catZones=[...new Set(sameGame.filter(x=>catOf(x)===cat).map(x=>x.zone))];
+  let wrong=pick(catZones,3);
+  if(wrong.length<3){ /* pas assez de la catégorie dans ce jeu → autres lieux DU MÊME jeu */
+    const restGame=[...new Set(sameGame.map(x=>x.zone))].filter(z=>wrong.indexOf(z)<0);
+    wrong=wrong.concat(pick(restGame,3-wrong.length));
+  }
+  if(wrong.length<3){ /* jeu trop petit → on complète, même catégorie d'abord */
+    const globalCat=[...new Set(OST.filter(x=>catOf(x)===cat && x.zone!==t.zone).map(x=>x.zone))].filter(z=>wrong.indexOf(z)<0);
+    wrong=wrong.concat(pick(globalCat,3-wrong.length));
+    if(wrong.length<3)wrong=wrong.concat(pick(OST_ZONES.filter(z=>z!==t.zone && wrong.indexOf(z)<0),3-wrong.length));
+  }
+  return shuffle([t.zone,...wrong.slice(0,3)]);
 }
 
 /* ---- UI : lecteur + volume + entonnoir (adaptatif) ---- */
